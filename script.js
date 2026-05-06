@@ -4,6 +4,7 @@ const PAYMENT_STORAGE_KEY = "superHelloPaymentsV03";
 const MCY_EXPORT_LOG_STORAGE_KEY = "superHelloMcyExportLogsV04";
 const GOODS_STORAGE_KEY = "superHelloGoodsV07";
 const TRAVEL_STORAGE_KEY = "superHelloTravelsV08";
+const REVIEW_STORAGE_KEY = "superHelloReviewsV09";
 
 let events = [];
 let participations = [];
@@ -11,12 +12,14 @@ let payments = [];
 let mcyExportLogs = [];
 let goods = [];
 let travels = [];
+let reviews = [];
 
 let editingId = null;
 let editingParticipationId = null;
 let editingPaymentId = null;
 let editingGoodsId = null;
 let editingTravelId = null;
+let editingReviewId = null;
 let importPreviewData = null;
 
 const eventForm = document.getElementById("eventForm");
@@ -41,6 +44,21 @@ const participationStatusFilter = document.getElementById("participationStatusFi
 const exportParticipationJsonButton = document.getElementById("exportParticipationJsonButton");
 const clearParticipationButton = document.getElementById("clearParticipationButton");
 const resetParticipationButton = document.getElementById("resetParticipationButton");
+
+const reviewForm = document.getElementById("reviewForm");
+const reviewTableBody = document.getElementById("reviewTableBody");
+const reviewCount = document.getElementById("reviewCount");
+const reviewAverageSatisfaction = document.getElementById("reviewAverageSatisfaction");
+const reviewMaxSatisfaction = document.getElementById("reviewMaxSatisfaction");
+const reviewLatestDate = document.getElementById("reviewLatestDate");
+const reviewSearchInput = document.getElementById("reviewSearchInput");
+const reviewGroupFilter = document.getElementById("reviewGroupFilter");
+const reviewSatisfactionFilter = document.getElementById("reviewSatisfactionFilter");
+const reviewTagSearchInput = document.getElementById("reviewTagSearchInput");
+const newReviewButton = document.getElementById("newReviewButton");
+const exportReviewJsonButton = document.getElementById("exportReviewJsonButton");
+const clearReviewButton = document.getElementById("clearReviewButton");
+const resetReviewButton = document.getElementById("resetReviewButton");
 
 const paymentForm = document.getElementById("paymentForm");
 const paymentTableBody = document.getElementById("paymentTableBody");
@@ -137,6 +155,15 @@ function loadTravels() {
 
 function saveTravels() {
   localStorage.setItem(TRAVEL_STORAGE_KEY, JSON.stringify(travels));
+}
+
+function loadReviews() {
+  const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
+  reviews = raw ? JSON.parse(raw) : [];
+}
+
+function saveReviews() {
+  localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviews));
 }
 
 function generateId(prefix) {
@@ -535,6 +562,61 @@ function resetParticipationForm() {
   document.getElementById("participationStatus").value = "検討中";
 }
 
+function getReviewFormData() {
+  return {
+    reviewId: editingReviewId || document.getElementById("reviewId").value || generateId("RV"),
+    eventId: document.getElementById("reviewEventId").value,
+    participationId: document.getElementById("reviewParticipationId").value,
+    reviewDate: document.getElementById("reviewDate").value,
+    groupName: document.getElementById("reviewGroupName").value,
+    venue: document.getElementById("reviewVenue").value.trim(),
+    seatInfo: document.getElementById("seatInfo").value.trim(),
+    referenceNumber: document.getElementById("referenceNumber").value.trim(),
+    satisfaction: document.getElementById("reviewSatisfaction").value,
+    setlistMemo: document.getElementById("setlistMemo").value.trim(),
+    memorableSong: document.getElementById("memorableSong").value.trim(),
+    favoriteMemberMemo: document.getElementById("favoriteMemberMemo").value.trim(),
+    highlightMemo: document.getElementById("highlightMemo").value.trim(),
+    reflectionMemo: document.getElementById("reflectionMemo").value.trim(),
+    reviewMemo: document.getElementById("reviewMemo").value.trim(),
+    reviewTags: document.getElementById("reviewTags").value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function setReviewFormData(review) {
+  editingReviewId = review.reviewId;
+
+  document.getElementById("reviewId").value = review.reviewId || "";
+  document.getElementById("reviewEventId").value = review.eventId || "";
+  document.getElementById("reviewParticipationId").value = review.participationId || "";
+  document.getElementById("reviewDate").value = review.reviewDate || "";
+  document.getElementById("reviewGroupName").value = review.groupName || "";
+  document.getElementById("reviewVenue").value = review.venue || "";
+  document.getElementById("seatInfo").value = review.seatInfo || "";
+  document.getElementById("referenceNumber").value = review.referenceNumber || "";
+  document.getElementById("reviewSatisfaction").value = review.satisfaction || "";
+  document.getElementById("setlistMemo").value = review.setlistMemo || "";
+  document.getElementById("memorableSong").value = review.memorableSong || "";
+  document.getElementById("favoriteMemberMemo").value = review.favoriteMemberMemo || "";
+  document.getElementById("highlightMemo").value = review.highlightMemo || "";
+  document.getElementById("reflectionMemo").value = review.reflectionMemo || "";
+  document.getElementById("reviewMemo").value = review.reviewMemo || "";
+  document.getElementById("reviewTags").value = review.reviewTags || "";
+
+  document.querySelector("#reviewForm .primary-button").textContent = "履歴を更新";
+}
+
+function resetReviewForm() {
+  editingReviewId = null;
+  reviewForm.reset();
+  document.getElementById("reviewId").value = generateId("RV");
+  document.getElementById("reviewEventId").value = "";
+  document.getElementById("reviewParticipationId").value = "";
+  document.getElementById("reviewSatisfaction").value = "";
+  document.querySelector("#reviewForm .primary-button").textContent = "履歴を登録";
+}
+
 function getPaymentFormData() {
   return {
     id: editingPaymentId,
@@ -794,6 +876,61 @@ function populateTravelEventSelect() {
 
   document.getElementById("travelEventId").innerHTML = `<option value="">イベント未紐付け</option>${options.join("")}`;
   document.getElementById("travelEventId").value = events.some((event) => event.id === currentValue) ? currentValue : "";
+}
+
+function populateReviewEventSelect() {
+  const currentValue = document.getElementById("reviewEventId").value;
+  const options = events
+    .slice()
+    .sort((a, b) => (a.eventDate || "9999-12-31").localeCompare(b.eventDate || "9999-12-31"))
+    .map((event) => {
+      const label = [event.eventDate, event.groupName, event.eventTitle, event.venue].filter(Boolean).join(" / ");
+      return `<option value="${escapeAttribute(event.id)}">${escapeHtml(label)}</option>`;
+    });
+
+  document.getElementById("reviewEventId").innerHTML = `<option value="">イベント未紐付け</option>${options.join("")}`;
+  document.getElementById("reviewEventId").value = events.some((event) => event.id === currentValue) ? currentValue : "";
+}
+
+function populateReviewParticipationSelect() {
+  const currentValue = document.getElementById("reviewParticipationId").value;
+  const options = participations
+    .slice()
+    .sort((a, b) => {
+      const eventA = getEventById(a.eventId);
+      const eventB = getEventById(b.eventId);
+      return (eventA?.eventDate || "9999-12-31").localeCompare(eventB?.eventDate || "9999-12-31");
+    })
+    .map((participation) => {
+      const event = getEventById(participation.eventId);
+      const label = [
+        participation.id,
+        event?.eventDate,
+        event?.groupName,
+        event?.eventTitle
+      ].filter(Boolean).join(" / ");
+      return `<option value="${escapeAttribute(participation.id)}">${escapeHtml(label)}</option>`;
+    });
+
+  document.getElementById("reviewParticipationId").innerHTML = `<option value="">参加予定未紐付け</option>${options.join("")}`;
+  document.getElementById("reviewParticipationId").value = participations.some((item) => item.id === currentValue) ? currentValue : "";
+}
+
+function applyEventToReviewForm(event) {
+  if (!event) return;
+  document.getElementById("reviewEventId").value = event.id || "";
+  document.getElementById("reviewDate").value = event.eventDate || document.getElementById("reviewDate").value;
+  document.getElementById("reviewGroupName").value = event.groupName || document.getElementById("reviewGroupName").value;
+  document.getElementById("reviewVenue").value = event.venue || document.getElementById("reviewVenue").value;
+}
+
+function applyParticipationToReviewForm(participation) {
+  if (!participation) return;
+  document.getElementById("reviewParticipationId").value = participation.id || "";
+  const event = getEventById(participation.eventId);
+  if (event) {
+    applyEventToReviewForm(event);
+  }
 }
 
 function hasSuppressedParticipationStatus(eventId) {
@@ -1115,6 +1252,57 @@ function getFilteredTravels() {
     });
 }
 
+function getFilteredReviews() {
+  const keyword = reviewSearchInput.value.trim().toLowerCase();
+  const selectedGroup = reviewGroupFilter.value;
+  const selectedSatisfaction = reviewSatisfactionFilter.value;
+  const tagKeyword = reviewTagSearchInput.value.trim().toLowerCase();
+
+  return reviews
+    .map((review) => {
+      const participation = getParticipationById(review.participationId);
+      const event = getEventById(review.eventId) || (participation ? getEventById(participation.eventId) : null);
+      return { ...review, participation, event };
+    })
+    .filter((review) => {
+      const groupName = review.groupName || review.event?.groupName || "";
+      const venue = review.venue || review.event?.venue || "";
+      const text = [
+        review.reviewId,
+        review.reviewDate,
+        review.event?.eventDate,
+        review.event?.eventTitle,
+        groupName,
+        venue,
+        review.seatInfo,
+        review.referenceNumber,
+        review.memorableSong,
+        review.setlistMemo,
+        review.favoriteMemberMemo,
+        review.highlightMemo,
+        review.reflectionMemo,
+        review.reviewMemo,
+        review.reviewTags
+      ].join(" ").toLowerCase();
+      const tags = String(review.reviewTags || "").toLowerCase();
+      const satisfaction = review.satisfaction || "";
+
+      const matchesKeyword = !keyword || text.includes(keyword);
+      const matchesGroup = !selectedGroup || groupName === selectedGroup;
+      const matchesSatisfaction =
+        !selectedSatisfaction ||
+        (selectedSatisfaction === "unrated" ? !satisfaction : satisfaction === selectedSatisfaction);
+      const matchesTag = !tagKeyword || tags.includes(tagKeyword);
+
+      return matchesKeyword && matchesGroup && matchesSatisfaction && matchesTag;
+    })
+    .sort((a, b) => {
+      const dateA = a.reviewDate || a.event?.eventDate || "9999-12-31";
+      const dateB = b.reviewDate || b.event?.eventDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
 function renderEvents() {
   const filtered = getFilteredEvents();
 
@@ -1183,6 +1371,7 @@ function renderParticipations() {
         <td>
           <div class="action-buttons">
             <button class="small-button" data-action="add-payment" data-id="${participation.id}">支払いへ</button>
+            <button class="small-button" data-action="add-review" data-id="${participation.id}">履歴へ</button>
             <button class="small-button" data-action="edit-participation" data-id="${participation.id}">編集</button>
             <button class="small-button" data-action="delete-participation" data-id="${participation.id}">削除</button>
           </div>
@@ -1335,6 +1524,61 @@ function renderTravels() {
   travelTotal.textContent = yen(totalAmount);
 }
 
+function renderReviews() {
+  const filtered = getFilteredReviews();
+
+  reviewTableBody.innerHTML = "";
+
+  if (filtered.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="11">参加履歴はありません。</td>`;
+    reviewTableBody.appendChild(row);
+  } else {
+    filtered.forEach((review) => {
+      const event = review.event;
+      const groupName = review.groupName || event?.groupName || "";
+      const venue = review.venue || event?.venue || "";
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${escapeHtml(review.reviewId)}</td>
+        <td>${escapeHtml(review.reviewDate || event?.eventDate || "")}</td>
+        <td>${event ? renderReviewEventCell(event) : "未紐付け"}</td>
+        <td>${escapeHtml(groupName)}</td>
+        <td>${escapeHtml(venue)}</td>
+        <td>${escapeHtml(review.seatInfo || "")}</td>
+        <td>${escapeHtml(review.referenceNumber || "")}</td>
+        <td>${escapeHtml(review.satisfaction || "未評価")}</td>
+        <td>${escapeHtml(review.memorableSong || "")}</td>
+        <td>${review.favoriteMemberMemo ? "有" : "無"}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="small-button" data-action="edit-review" data-id="${escapeAttribute(review.reviewId)}">編集</button>
+            <button class="small-button" data-action="delete-review" data-id="${escapeAttribute(review.reviewId)}">削除</button>
+          </div>
+        </td>
+      `;
+
+      reviewTableBody.appendChild(row);
+    });
+  }
+
+  const rated = filtered
+    .map((review) => Number(review.satisfaction || 0))
+    .filter((value) => value >= 1 && value <= 5);
+  const average = rated.length ? (rated.reduce((sum, value) => sum + value, 0) / rated.length).toFixed(1) : "-";
+  const max = rated.length ? String(Math.max(...rated)) : "-";
+  const reviewDates = filtered
+    .map((review) => review.reviewDate || review.event?.eventDate || "")
+    .filter(Boolean)
+    .sort();
+  const latest = reviewDates.length ? reviewDates[reviewDates.length - 1] : "-";
+
+  reviewCount.textContent = String(filtered.length);
+  reviewAverageSatisfaction.textContent = average;
+  reviewMaxSatisfaction.textContent = max;
+  reviewLatestDate.textContent = latest;
+}
+
 function renderTitleCell(event) {
   const title = escapeHtml(event.eventTitle);
   if (!event.sourceUrl) return title;
@@ -1349,6 +1593,12 @@ function renderGoodsEventCell(event) {
 
 function renderTravelEventCell(event) {
   return renderTitleCell(event);
+}
+
+function renderReviewEventCell(event) {
+  const dateText = event.eventDate ? `${escapeHtml(event.eventDate)} / ` : "";
+  const venueText = event.venue ? ` / ${escapeHtml(event.venue)}` : "";
+  return `${dateText}${renderTitleCell(event)}${venueText}`;
 }
 
 function escapeHtml(value) {
@@ -1384,6 +1634,9 @@ function upsertEvent(event) {
   renderGoods();
   populateTravelEventSelect();
   renderTravels();
+  populateReviewEventSelect();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderMcyPreview();
   renderReminders();
 }
@@ -1403,6 +1656,8 @@ function upsertParticipation(participation) {
   saveParticipations();
   renderParticipations();
   renderPayments();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderReminders();
 }
 
@@ -1458,6 +1713,25 @@ function upsertTravel(travel) {
   renderMcyPreview();
 }
 
+function upsertReview(review) {
+  const index = reviews.findIndex((reviewItem) => reviewItem.reviewId === review.reviewId);
+
+  if (index >= 0) {
+    reviews[index] = {
+      ...review,
+      createdAt: reviews[index].createdAt || new Date().toISOString()
+    };
+  } else {
+    reviews.push({
+      ...review,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveReviews();
+  renderReviews();
+}
+
 function addParticipationFromEvent(eventId) {
   const event = getEventById(eventId);
   if (!event) return;
@@ -1489,6 +1763,7 @@ function addParticipationFromEvent(eventId) {
   participations.push(participation);
   saveParticipations();
   renderParticipations();
+  populateReviewParticipationSelect();
   renderReminders();
   setParticipationFormData(participation);
   scrollToParticipationForm();
@@ -1539,6 +1814,62 @@ function addPaymentFromParticipation(participationId) {
   alert(`支払い情報を作成しました。\n${event?.eventTitle || "イベント不明"}`);
 }
 
+function addReviewFromParticipation(participationId) {
+  const participation = getParticipationById(participationId);
+  if (!participation) return;
+
+  const existing = reviews.find((review) => review.participationId === participationId);
+  if (existing) {
+    const ok = confirm("この参加予定には既に参加履歴があります。\n既存履歴の編集画面を開きますか？");
+    if (ok) {
+      setReviewFormData(existing);
+      scrollToReviewForm();
+    }
+    return;
+  }
+
+  const event = getEventById(participation.eventId);
+  const review = {
+    reviewId: generateId("RV"),
+    eventId: participation.eventId || "",
+    participationId,
+    reviewDate: event?.eventDate || "",
+    groupName: event?.groupName || "",
+    venue: event?.venue || "",
+    seatInfo: participation.seatType || "",
+    referenceNumber: "",
+    satisfaction: "",
+    setlistMemo: "",
+    memorableSong: "",
+    favoriteMemberMemo: "",
+    highlightMemo: "",
+    reflectionMemo: "",
+    reviewMemo: "",
+    reviewTags: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (participation.participationStatus !== "参加済") {
+    const ok = confirm("参加状態を参加済に更新しますか？");
+    if (ok) {
+      participation.participationStatus = "参加済";
+      participation.updatedAt = new Date().toISOString();
+      saveParticipations();
+      renderParticipations();
+      renderReminders();
+    }
+  }
+
+  reviews.push(review);
+  saveReviews();
+  renderReviews();
+  setReviewFormData(review);
+  scrollToReviewForm();
+
+  alert(`参加履歴を作成しました。\n${event?.eventTitle || "イベント未紐付け"}`);
+}
+
 function scrollToParticipationForm() {
   participationForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1553,6 +1884,10 @@ function scrollToGoodsForm() {
 
 function scrollToTravelForm() {
   travelForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToReviewForm() {
+  reviewForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function deleteEvent(id) {
@@ -1576,6 +1911,9 @@ function deleteEvent(id) {
   renderGoods();
   populateTravelEventSelect();
   renderTravels();
+  populateReviewEventSelect();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderMcyPreview();
   renderReminders();
 
@@ -1603,6 +1941,8 @@ function deleteParticipation(id) {
   saveParticipations();
   renderParticipations();
   renderPayments();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderReminders();
 
   if (editingParticipationId === id) {
@@ -1664,6 +2004,24 @@ function deleteTravel(id) {
 
   if (editingTravelId === id) {
     resetTravelForm();
+  }
+}
+
+function deleteReview(id) {
+  const target = reviews.find((review) => review.reviewId === id);
+  if (!target) return;
+
+  const event = getEventById(target.eventId);
+  const title = event?.eventTitle || target.memorableSong || target.reviewId;
+  const ok = confirm(`参加履歴を削除しますか？\n${title}`);
+  if (!ok) return;
+
+  reviews = reviews.filter((review) => review.reviewId !== id);
+  saveReviews();
+  renderReviews();
+
+  if (editingReviewId === id) {
+    resetReviewForm();
   }
 }
 
@@ -2111,6 +2469,15 @@ participationForm.addEventListener("submit", (event) => {
   resetParticipationForm();
 });
 
+reviewForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const formData = getReviewFormData();
+
+  upsertReview(formData);
+  resetReviewForm();
+});
+
 paymentForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -2168,6 +2535,10 @@ resetTravelButton.addEventListener("click", () => {
   resetTravelForm();
 });
 
+resetReviewButton.addEventListener("click", () => {
+  resetReviewForm();
+});
+
 newGoodsButton.addEventListener("click", () => {
   resetGoodsForm();
   scrollToGoodsForm();
@@ -2176,6 +2547,11 @@ newGoodsButton.addEventListener("click", () => {
 newTravelButton.addEventListener("click", () => {
   resetTravelForm();
   scrollToTravelForm();
+});
+
+newReviewButton.addEventListener("click", () => {
+  resetReviewForm();
+  scrollToReviewForm();
 });
 
 searchInput.addEventListener("input", () => {
@@ -2226,6 +2602,22 @@ travelMcyStatusFilter.addEventListener("change", () => {
   renderTravels();
 });
 
+reviewSearchInput.addEventListener("input", () => {
+  renderReviews();
+});
+
+reviewGroupFilter.addEventListener("change", () => {
+  renderReviews();
+});
+
+reviewSatisfactionFilter.addEventListener("change", () => {
+  renderReviews();
+});
+
+reviewTagSearchInput.addEventListener("input", () => {
+  renderReviews();
+});
+
 document.getElementById("goodsQuantity").addEventListener("input", () => {
   syncGoodsTotalAmount();
 });
@@ -2239,6 +2631,16 @@ document.getElementById("goodsEventId").addEventListener("change", () => {
   if (event?.groupName) {
     document.getElementById("goodsGroupName").value = event.groupName;
   }
+});
+
+document.getElementById("reviewEventId").addEventListener("change", () => {
+  const event = getEventById(document.getElementById("reviewEventId").value);
+  applyEventToReviewForm(event);
+});
+
+document.getElementById("reviewParticipationId").addEventListener("change", () => {
+  const participation = getParticipationById(document.getElementById("reviewParticipationId").value);
+  applyParticipationToReviewForm(participation);
 });
 
 ["transportationCost", "hotelCost", "otherTravelCost"].forEach((elementId) => {
@@ -2285,6 +2687,10 @@ participationTableBody.addEventListener("click", (event) => {
 
   if (action === "add-payment") {
     addPaymentFromParticipation(id);
+  }
+
+  if (action === "add-review") {
+    addReviewFromParticipation(id);
   }
 
   if (action === "edit-participation") {
@@ -2360,6 +2766,26 @@ travelTableBody.addEventListener("click", (event) => {
   }
 });
 
+reviewTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (action === "edit-review") {
+    const target = reviews.find((item) => item.reviewId === id);
+    if (target) {
+      setReviewFormData(target);
+      scrollToReviewForm();
+    }
+  }
+
+  if (action === "delete-review") {
+    deleteReview(id);
+  }
+});
+
 reminderTableBody.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -2409,6 +2835,10 @@ exportTravelJsonButton.addEventListener("click", () => {
   exportJson("super-hello-travels", travels);
 });
 
+exportReviewJsonButton.addEventListener("click", () => {
+  exportJson("super-hello-reviews", reviews);
+});
+
 mcyExportTarget.addEventListener("change", () => {
   renderMcyPreview();
 });
@@ -2441,6 +2871,9 @@ clearAllButton.addEventListener("click", () => {
   renderGoods();
   populateTravelEventSelect();
   renderTravels();
+  populateReviewEventSelect();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderMcyPreview();
   renderReminders();
 });
@@ -2456,6 +2889,8 @@ clearParticipationButton.addEventListener("click", () => {
   resetParticipationForm();
   renderParticipations();
   renderPayments();
+  populateReviewParticipationSelect();
+  renderReviews();
   renderMcyPreview();
   renderReminders();
 });
@@ -2500,21 +2935,38 @@ clearTravelButton.addEventListener("click", () => {
   renderMcyPreview();
 });
 
+clearReviewButton.addEventListener("click", () => {
+  if (reviews.length === 0) return;
+
+  const ok = confirm("参加履歴をすべて削除します。\nイベント候補・参加予定・支払い情報・グッズ情報・遠征情報は削除されません。\nよろしいですか？");
+  if (!ok) return;
+
+  reviews = [];
+  saveReviews();
+  resetReviewForm();
+  renderReviews();
+});
+
 loadEvents();
 loadParticipations();
 loadPayments();
 loadMcyExportLogs();
 loadGoods();
 loadTravels();
+loadReviews();
 
 populateGoodsEventSelect();
 populateTravelEventSelect();
+populateReviewEventSelect();
+populateReviewParticipationSelect();
 resetGoodsForm();
 resetTravelForm();
+resetReviewForm();
 renderEvents();
 renderParticipations();
 renderPayments();
 renderGoods();
 renderTravels();
+renderReviews();
 renderMcyPreview();
 renderReminders();

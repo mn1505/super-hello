@@ -320,6 +320,10 @@ input[readonly] {
   min-width: 1950px;
 }
 
+.review-table {
+  min-width: 1550px;
+}
+
 .status-未払い {
   background: #fff0cc;
 }
