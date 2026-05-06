@@ -5,6 +5,17 @@ const MCY_EXPORT_LOG_STORAGE_KEY = "superHelloMcyExportLogsV04";
 const GOODS_STORAGE_KEY = "superHelloGoodsV07";
 const TRAVEL_STORAGE_KEY = "superHelloTravelsV08";
 const REVIEW_STORAGE_KEY = "superHelloReviewsV09";
+const APP_VERSION = "1.0";
+const APP_NAME = "SUPER HELLO";
+const STORAGE_DEFINITIONS = [
+  { key: EVENT_STORAGE_KEY, label: "イベント候補", getData: () => events },
+  { key: PARTICIPATION_STORAGE_KEY, label: "参加予定", getData: () => participations },
+  { key: PAYMENT_STORAGE_KEY, label: "チケット支払い", getData: () => payments },
+  { key: MCY_EXPORT_LOG_STORAGE_KEY, label: "MCY連携ログ", getData: () => mcyExportLogs },
+  { key: GOODS_STORAGE_KEY, label: "グッズ", getData: () => goods },
+  { key: TRAVEL_STORAGE_KEY, label: "遠征", getData: () => travels },
+  { key: REVIEW_STORAGE_KEY, label: "参加履歴", getData: () => reviews }
+];
 
 let events = [];
 let participations = [];
@@ -102,10 +113,14 @@ const reminderTargetFilter = document.getElementById("reminderTargetFilter");
 const reminderTypeFilter = document.getElementById("reminderTypeFilter");
 const reminderTableBody = document.getElementById("reminderTableBody");
 const reminderCount = document.getElementById("reminderCount");
+const exportBackupButton = document.getElementById("exportBackupButton");
+const restoreBackupSelectButton = document.getElementById("restoreBackupSelectButton");
+const restoreBackupFile = document.getElementById("restoreBackupFile");
+const loadSampleDataButton = document.getElementById("loadSampleDataButton");
+const clearAllDataButton = document.getElementById("clearAllDataButton");
 
 function loadEvents() {
-  const raw = localStorage.getItem(EVENT_STORAGE_KEY);
-  events = raw ? JSON.parse(raw) : [];
+  events = loadStoredArray(EVENT_STORAGE_KEY);
 }
 
 function saveEvents() {
@@ -113,8 +128,7 @@ function saveEvents() {
 }
 
 function loadParticipations() {
-  const raw = localStorage.getItem(PARTICIPATION_STORAGE_KEY);
-  participations = raw ? JSON.parse(raw) : [];
+  participations = loadStoredArray(PARTICIPATION_STORAGE_KEY);
 }
 
 function saveParticipations() {
@@ -122,8 +136,7 @@ function saveParticipations() {
 }
 
 function loadPayments() {
-  const raw = localStorage.getItem(PAYMENT_STORAGE_KEY);
-  payments = raw ? JSON.parse(raw) : [];
+  payments = loadStoredArray(PAYMENT_STORAGE_KEY);
 }
 
 function savePayments() {
@@ -131,8 +144,7 @@ function savePayments() {
 }
 
 function loadMcyExportLogs() {
-  const raw = localStorage.getItem(MCY_EXPORT_LOG_STORAGE_KEY);
-  mcyExportLogs = raw ? JSON.parse(raw) : [];
+  mcyExportLogs = loadStoredArray(MCY_EXPORT_LOG_STORAGE_KEY);
 }
 
 function saveMcyExportLogs() {
@@ -140,8 +152,7 @@ function saveMcyExportLogs() {
 }
 
 function loadGoods() {
-  const raw = localStorage.getItem(GOODS_STORAGE_KEY);
-  goods = raw ? JSON.parse(raw) : [];
+  goods = loadStoredArray(GOODS_STORAGE_KEY);
 }
 
 function saveGoods() {
@@ -149,8 +160,7 @@ function saveGoods() {
 }
 
 function loadTravels() {
-  const raw = localStorage.getItem(TRAVEL_STORAGE_KEY);
-  travels = raw ? JSON.parse(raw) : [];
+  travels = loadStoredArray(TRAVEL_STORAGE_KEY);
 }
 
 function saveTravels() {
@@ -158,12 +168,23 @@ function saveTravels() {
 }
 
 function loadReviews() {
-  const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
-  reviews = raw ? JSON.parse(raw) : [];
+  reviews = loadStoredArray(REVIEW_STORAGE_KEY);
 }
 
 function saveReviews() {
   localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviews));
+}
+
+function loadStoredArray(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function generateId(prefix) {
@@ -174,20 +195,25 @@ function generateId(prefix) {
 }
 
 function yen(value) {
-  const number = Number(value || 0);
+  const number = toSafeNumber(value);
   return number.toLocaleString("ja-JP");
 }
 
+function toSafeNumber(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
 function getPaymentTotal(payment) {
-  return Number(payment.ticketPrice || 0) + Number(payment.ticketFee || 0);
+  return toSafeNumber(payment.ticketPrice) + toSafeNumber(payment.ticketFee);
 }
 
 function getGoodsTotal(item) {
-  return Number(item.totalAmount || 0);
+  return toSafeNumber(item.totalAmount);
 }
 
 function getTravelTotal(travel) {
-  return Number(travel.totalTravelCost || 0);
+  return toSafeNumber(travel.totalTravelCost);
 }
 
 function getEventById(eventId) {
@@ -663,8 +689,8 @@ function resetPaymentForm() {
 }
 
 function getGoodsFormData() {
-  const quantity = Number(document.getElementById("goodsQuantity").value || 0);
-  const unitPrice = Number(document.getElementById("goodsUnitPrice").value || 0);
+  const quantity = toSafeNumber(document.getElementById("goodsQuantity").value);
+  const unitPrice = toSafeNumber(document.getElementById("goodsUnitPrice").value);
   const totalAmount = document.getElementById("goodsTotalAmount").value || String(quantity * unitPrice);
 
   return {
@@ -720,15 +746,15 @@ function resetGoodsForm() {
 }
 
 function syncGoodsTotalAmount() {
-  const quantity = Number(document.getElementById("goodsQuantity").value || 0);
-  const unitPrice = Number(document.getElementById("goodsUnitPrice").value || 0);
-  document.getElementById("goodsTotalAmount").value = quantity && unitPrice ? String(quantity * unitPrice) : "";
+  const quantity = toSafeNumber(document.getElementById("goodsQuantity").value);
+  const unitPrice = toSafeNumber(document.getElementById("goodsUnitPrice").value);
+  document.getElementById("goodsTotalAmount").value = String(quantity * unitPrice);
 }
 
 function getTravelFormData() {
-  const transportationCost = Number(document.getElementById("transportationCost").value || 0);
-  const hotelCost = Number(document.getElementById("hotelCost").value || 0);
-  const otherTravelCost = Number(document.getElementById("otherTravelCost").value || 0);
+  const transportationCost = toSafeNumber(document.getElementById("transportationCost").value);
+  const hotelCost = toSafeNumber(document.getElementById("hotelCost").value);
+  const otherTravelCost = toSafeNumber(document.getElementById("otherTravelCost").value);
   const calculatedTotal = transportationCost + hotelCost + otherTravelCost;
   const totalTravelCost = document.getElementById("totalTravelCost").value || String(calculatedTotal);
 
@@ -794,11 +820,11 @@ function resetTravelForm() {
 }
 
 function syncTravelTotalAmount() {
-  const transportationCost = Number(document.getElementById("transportationCost").value || 0);
-  const hotelCost = Number(document.getElementById("hotelCost").value || 0);
-  const otherTravelCost = Number(document.getElementById("otherTravelCost").value || 0);
+  const transportationCost = toSafeNumber(document.getElementById("transportationCost").value);
+  const hotelCost = toSafeNumber(document.getElementById("hotelCost").value);
+  const otherTravelCost = toSafeNumber(document.getElementById("otherTravelCost").value);
   const total = transportationCost + hotelCost + otherTravelCost;
-  document.getElementById("totalTravelCost").value = total ? String(total) : "";
+  document.getElementById("totalTravelCost").value = String(total);
 }
 
 function formatDate(value) {
@@ -2025,6 +2051,265 @@ function deleteReview(id) {
   }
 }
 
+function getSuperHelloStorageKeys() {
+  const keys = new Set(STORAGE_DEFINITIONS.map((definition) => definition.key));
+
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("superHello")) {
+      keys.add(key);
+    }
+  }
+
+  return Array.from(keys).sort();
+}
+
+function readStorageValue(key) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return [];
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function buildBackupData() {
+  const storage = {};
+  const rawStorage = {};
+  getSuperHelloStorageKeys().forEach((key) => {
+    storage[key] = readStorageValue(key);
+    rawStorage[key] = localStorage.getItem(key);
+  });
+
+  return {
+    app: APP_NAME,
+    version: APP_VERSION,
+    schema: "super-hello-localstorage-backup",
+    exportedAt: new Date().toISOString(),
+    storage,
+    rawStorage,
+    data: Object.fromEntries(STORAGE_DEFINITIONS.map((definition) => [definition.label, definition.getData()]))
+  };
+}
+
+function exportAllBackup() {
+  exportJson("super-hello-backup", buildBackupData());
+}
+
+function validateBackupData(data) {
+  if (!data || typeof data !== "object") return false;
+  if (data.app !== APP_NAME) return false;
+  if (data.schema !== "super-hello-localstorage-backup") return false;
+  if (!data.storage || typeof data.storage !== "object" || Array.isArray(data.storage)) return false;
+
+  const keys = Object.keys(data.storage);
+  if (keys.length === 0) return false;
+  const hasKnownKey = STORAGE_DEFINITIONS.some((definition) => keys.includes(definition.key));
+  if (!hasKnownKey) return false;
+
+  return STORAGE_DEFINITIONS.every((definition) =>
+    !keys.includes(definition.key) || Array.isArray(data.storage[definition.key])
+  );
+}
+
+function restoreBackupData(data) {
+  const backupKeys = Object.keys(data.storage).filter((key) => key.startsWith("superHello"));
+
+  getSuperHelloStorageKeys().forEach((key) => {
+    localStorage.removeItem(key);
+  });
+
+  backupKeys.forEach((key) => {
+    const value = data.storage[key];
+    const rawValue = data.rawStorage && typeof data.rawStorage[key] === "string" ? data.rawStorage[key] : null;
+    localStorage.setItem(key, rawValue ?? (typeof value === "string" ? value : JSON.stringify(value)));
+  });
+
+  reloadAllData();
+  resetForm();
+  resetParticipationForm();
+  resetPaymentForm();
+  resetGoodsForm();
+  resetTravelForm();
+  resetReviewForm();
+  renderAll();
+}
+
+function hasAnySuperHelloData() {
+  return STORAGE_DEFINITIONS.some((definition) => definition.getData().length > 0) || mcyExportLogs.length > 0;
+}
+
+function loadSampleData() {
+  if (hasAnySuperHelloData()) {
+    const ok = confirm("既存データがあります。\nサンプルデータを追加投入しますか？\n既存データは上書きしません。");
+    if (!ok) return;
+  }
+
+  const now = new Date();
+  const stamp = now.toISOString().slice(0, 10).replaceAll("-", "");
+  const suffix = String(now.getTime()).slice(-5);
+  const eventId = `EVSAMPLE${stamp}${suffix}`;
+  const participationId = `PTSAMPLE${stamp}${suffix}`;
+  const paymentId = `PYSAMPLE${stamp}${suffix}`;
+  const goodsId = `GDSAMPLE${stamp}${suffix}`;
+  const travelId = `TRSAMPLE${stamp}${suffix}`;
+  const reviewId = `RVSAMPLE${stamp}${suffix}`;
+
+  events.push({
+    id: eventId,
+    eventDate: "2026-06-15",
+    startTime: "18:30",
+    groupName: "アンジュルム",
+    eventType: "CONCERT",
+    eventTitle: "SUPER HELLO v1.0 動作確認コンサート",
+    venue: "日本武道館",
+    prefecture: "東京",
+    applicationDeadline: "2026-05-20",
+    lotteryDate: "2026-05-27",
+    paymentDeadline: "2026-06-03",
+    status: "当選",
+    sourceUrl: "",
+    memo: "v1.0サンプルデータ",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  participations.push({
+    id: participationId,
+    eventId,
+    participationStatus: "当選",
+    ticketCount: "1",
+    seatType: "一般席",
+    ticketSource: "FC",
+    companion: "",
+    applicationDate: "2026-05-10",
+    participationMemo: "サンプル参加予定",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  payments.push({
+    id: paymentId,
+    participationId,
+    paymentItem: "チケット代",
+    paymentStatus: "支払済",
+    paymentDate: "2026-06-01",
+    ticketPrice: "8800",
+    ticketFee: "770",
+    paymentMethod: "クレカ",
+    paymentVendor: "FC",
+    mcyExportStatus: "未連携",
+    paymentMemo: "サンプル支払い",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  goods.push({
+    goodsId,
+    eventId,
+    purchaseDate: "2026-06-15",
+    groupName: "アンジュルム",
+    memberName: "サンプルメンバー",
+    itemName: "日替わり写真",
+    goodsCategory: "写真",
+    purchasePlace: "会場物販",
+    quantity: "2",
+    unitPrice: "500",
+    totalAmount: "1000",
+    paymentMethod: "現金",
+    mcyExportStatus: "未連携",
+    goodsMemo: "サンプルグッズ",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  travels.push({
+    travelId,
+    eventId,
+    departureDate: "2026-06-15",
+    returnDate: "2026-06-15",
+    transportationType: "在来線",
+    departurePlace: "自宅最寄り",
+    arrivalPlace: "九段下",
+    transportationCost: "1200",
+    hotelName: "",
+    checkInDate: "",
+    checkOutDate: "",
+    hotelCost: "",
+    otherTravelCost: "300",
+    totalTravelCost: "1500",
+    paymentDate: "2026-06-15",
+    paymentMethod: "電子マネー",
+    bookingStatus: "利用済",
+    mcyExportStatus: "未連携",
+    travelMemo: "サンプル遠征",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  reviews.push({
+    reviewId,
+    eventId,
+    participationId,
+    reviewDate: "2026-06-15",
+    groupName: "アンジュルム",
+    venue: "日本武道館",
+    seatInfo: "1階南スタンド",
+    referenceNumber: "",
+    satisfaction: "5",
+    setlistMemo: "サンプルセットリスト",
+    memorableSong: "大器晩成",
+    favoriteMemberMemo: "推しメモ確認用",
+    highlightMemo: "v1.0動作確認",
+    reflectionMemo: "",
+    reviewMemo: "参加履歴サンプルです。",
+    reviewTags: "サンプル, 動作確認",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  });
+
+  saveEvents();
+  saveParticipations();
+  savePayments();
+  saveGoods();
+  saveTravels();
+  saveReviews();
+  renderAll();
+  alert("サンプルデータを投入しました。");
+}
+
+function clearAllSuperHelloData() {
+  if (!hasAnySuperHelloData()) {
+    alert("削除対象のSUPER HELLOデータはありません。");
+    return;
+  }
+
+  const firstOk = confirm("SUPER HELLOの全データを削除します。\nイベント候補、参加予定、支払い、MCY連携ログ、グッズ、遠征、参加履歴が対象です。\nこの操作は元に戻せません。続行しますか？");
+  if (!firstOk) return;
+
+  const typed = prompt("最終確認です。削除する場合は DELETE と入力してください。");
+  if (typed !== "DELETE") {
+    alert("入力が一致しないため削除を中止しました。");
+    return;
+  }
+
+  getSuperHelloStorageKeys().forEach((key) => {
+    localStorage.removeItem(key);
+  });
+
+  reloadAllData();
+  resetForm();
+  resetParticipationForm();
+  resetPaymentForm();
+  resetGoodsForm();
+  resetTravelForm();
+  resetReviewForm();
+  renderAll();
+  alert("SUPER HELLO全データを削除しました。");
+}
+
 function exportJson(filenamePrefix, data) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -2228,9 +2513,9 @@ function buildMcyGoodsDescription(item) {
 }
 
 function getMcyTravelMiddleCategory(travel) {
-  const hasTransportation = Number(travel.transportationCost || 0) > 0;
-  const hasHotel = Number(travel.hotelCost || 0) > 0;
-  const hasOther = Number(travel.otherTravelCost || 0) > 0;
+  const hasTransportation = toSafeNumber(travel.transportationCost) > 0;
+  const hasHotel = toSafeNumber(travel.hotelCost) > 0;
+  const hasOther = toSafeNumber(travel.otherTravelCost) > 0;
 
   if (hasTransportation && !hasHotel && !hasOther) return "交通費";
   if (hasHotel && !hasTransportation && !hasOther) return "宿泊費";
@@ -2272,7 +2557,7 @@ function renderMcyPreview() {
     });
   }
 
-  const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const total = rows.reduce((sum, row) => sum + toSafeNumber(row.amount), 0);
   mcyPreviewCount.textContent = String(rows.length);
   mcyPreviewTotal.textContent = yen(total);
 }
@@ -2353,7 +2638,7 @@ function recordMcyExportLog(format, rows) {
     format,
     exportedAt: new Date().toISOString(),
     count: rows.length,
-    total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    total: rows.reduce((sum, row) => sum + toSafeNumber(row.amount), 0),
     sourceIds: rows.map((row) => row.sourceId)
   });
 
@@ -2417,6 +2702,31 @@ function markDisplayedMcyRowsAsExported() {
   renderMcyPreview();
 
   alert("表示分を連携済に更新しました。");
+}
+
+function reloadAllData() {
+  loadEvents();
+  loadParticipations();
+  loadPayments();
+  loadMcyExportLogs();
+  loadGoods();
+  loadTravels();
+  loadReviews();
+}
+
+function renderAll() {
+  populateGoodsEventSelect();
+  populateTravelEventSelect();
+  populateReviewEventSelect();
+  populateReviewParticipationSelect();
+  renderEvents();
+  renderParticipations();
+  renderPayments();
+  renderGoods();
+  renderTravels();
+  renderReviews();
+  renderMcyPreview();
+  renderReminders();
 }
 
 analyzeImportButton.addEventListener("click", () => {
@@ -2855,6 +3165,48 @@ markMcyExportedButton.addEventListener("click", () => {
   markDisplayedMcyRowsAsExported();
 });
 
+exportBackupButton.addEventListener("click", () => {
+  exportAllBackup();
+});
+
+restoreBackupSelectButton.addEventListener("click", () => {
+  restoreBackupFile.value = "";
+  restoreBackupFile.click();
+});
+
+restoreBackupFile.addEventListener("change", () => {
+  const file = restoreBackupFile.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const data = JSON.parse(String(reader.result || ""));
+      if (!validateBackupData(data)) {
+        alert("SUPER HELLO用バックアップJSONではありません。");
+        return;
+      }
+
+      const ok = confirm("バックアップJSONから全データを復元します。\n現在のSUPER HELLO関連データは上書きされます。\n実行前に現在データのバックアップを推奨します。\n復元しますか？");
+      if (!ok) return;
+
+      restoreBackupData(data);
+      alert("バックアップJSONを復元しました。");
+    } catch {
+      alert("JSONを読み込めませんでした。ファイル形式を確認してください。");
+    }
+  });
+  reader.readAsText(file);
+});
+
+loadSampleDataButton.addEventListener("click", () => {
+  loadSampleData();
+});
+
+clearAllDataButton.addEventListener("click", () => {
+  clearAllSuperHelloData();
+});
+
 clearAllButton.addEventListener("click", () => {
   if (events.length === 0) return;
 
@@ -2947,26 +3299,8 @@ clearReviewButton.addEventListener("click", () => {
   renderReviews();
 });
 
-loadEvents();
-loadParticipations();
-loadPayments();
-loadMcyExportLogs();
-loadGoods();
-loadTravels();
-loadReviews();
-
-populateGoodsEventSelect();
-populateTravelEventSelect();
-populateReviewEventSelect();
-populateReviewParticipationSelect();
+reloadAllData();
 resetGoodsForm();
 resetTravelForm();
 resetReviewForm();
-renderEvents();
-renderParticipations();
-renderPayments();
-renderGoods();
-renderTravels();
-renderReviews();
-renderMcyPreview();
-renderReminders();
+renderAll();

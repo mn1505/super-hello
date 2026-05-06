@@ -32,6 +32,7 @@ body {
 
 .top-menu {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 4px 6px;
   background: #bfbfbf;

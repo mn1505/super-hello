@@ -9,24 +9,26 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.9</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v1.0</div>
   </header>
 
   <nav class="top-menu">
-    <button class="menu-button active">イベント候補</button>
-    <button class="menu-button active">参加予定</button>
-    <button class="menu-button active">履歴</button>
+    <button class="menu-button active">イベント</button>
+    <button class="menu-button active">取込</button>
+    <button class="menu-button active">参加</button>
     <button class="menu-button active">支払い</button>
+    <button class="menu-button active">MCY</button>
+    <button class="menu-button active">期限</button>
     <button class="menu-button active">グッズ</button>
     <button class="menu-button active">遠征</button>
-    <button class="menu-button active">MCY連携</button>
-    <button class="menu-button active">期限管理</button>
+    <button class="menu-button active">履歴</button>
+    <button class="menu-button active">保守</button>
     <button class="menu-button" disabled>集計</button>
   </nav>
 
   <main class="container">
     <section class="panel">
-      <div class="panel-title">イベント候補 登録</div>
+      <div class="panel-title">イベント候補 登録・編集</div>
 
       <form id="eventForm" class="event-form">
         <div class="form-grid">
@@ -132,7 +134,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">イベント情報 取り込み補助</div>
+      <div class="panel-title">イベント情報 取込補助</div>
 
       <div class="import-area">
         <label>
@@ -141,8 +143,8 @@
         </label>
 
         <div class="form-actions">
-          <button type="button" id="analyzeImportButton" class="primary-button">解析</button>
-          <button type="button" id="clearImportButton">取り込み欄クリア</button>
+          <button type="button" id="analyzeImportButton" class="primary-button">取込テキスト解析</button>
+          <button type="button" id="clearImportButton">取込欄クリア</button>
         </div>
       </div>
 
@@ -163,7 +165,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" id="applyImportButton" class="primary-button" disabled>イベント登録フォームへ反映</button>
+        <button type="button" id="applyImportButton" class="primary-button" disabled>イベントフォームへ反映</button>
       </div>
     </section>
 
@@ -327,7 +329,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">参加予定 編集</div>
+      <div class="panel-title">参加予定 登録・編集</div>
 
       <form id="participationForm" class="event-form">
         <div class="form-grid">
@@ -491,7 +493,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">参加履歴・感想ログ 編集</div>
+      <div class="panel-title">参加履歴・感想ログ 登録・編集</div>
 
       <form id="reviewForm" class="event-form">
         <div class="form-grid">
@@ -733,7 +735,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">グッズ 編集</div>
+      <div class="panel-title">グッズ 登録・編集</div>
 
       <form id="goodsForm" class="event-form">
         <div class="form-grid">
@@ -929,7 +931,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">遠征 編集</div>
+      <div class="panel-title">遠征 登録・編集</div>
 
       <form id="travelForm" class="event-form">
         <div class="form-grid">
@@ -1111,7 +1113,7 @@
     </section>
 
     <section class="panel">
-      <div class="panel-title">支払い 編集</div>
+      <div class="panel-title">支払い 登録・編集</div>
 
       <form id="paymentForm" class="event-form">
         <div class="form-grid">
@@ -1208,10 +1210,26 @@
         </div>
       </form>
     </section>
+
+    <section class="panel">
+      <div class="panel-title">バックアップ・復元 / 保守</div>
+
+      <div class="toolbar">
+        <button type="button" id="exportBackupButton" class="primary-button">全データJSONバックアップ出力</button>
+        <button type="button" id="restoreBackupSelectButton">バックアップJSONを選択して復元</button>
+        <input type="file" id="restoreBackupFile" accept="application/json,.json" hidden />
+        <button type="button" id="loadSampleDataButton">サンプルデータ投入</button>
+        <button type="button" id="clearAllDataButton" class="danger-button">SUPER HELLO全データ削除</button>
+      </div>
+
+      <div class="summary-line">
+        復元は現在のSUPER HELLO関連localStorageデータを上書きします。実行前にバックアップ出力を推奨します。
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
-    SUPER HELLO Classic Office UI / localStorage mode
+    SUPER HELLO v1.0 Classic Office UI / localStorage mode
   </footer>
 
   <script src="script.js"></script>
