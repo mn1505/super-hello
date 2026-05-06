@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SUPER HELLO - イベント候補管理</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">SUPER HELLO</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.1</div>
+  </header>
+
+  <nav class="top-menu">
+    <button class="menu-button active">イベント候補</button>
+    <button class="menu-button" disabled>参加予定</button>
+    <button class="menu-button" disabled>支払い</button>
+    <button class="menu-button" disabled>MCY連携</button>
+    <button class="menu-button" disabled>集計</button>
+  </nav>
+
+  <main class="container">
+    <section class="panel">
+      <div class="panel-title">イベント候補 登録</div>
+
+      <form id="eventForm" class="event-form">
+        <div class="form-grid">
+          <label>
+            開催日
+            <input type="date" id="eventDate" required />
+          </label>
+
+          <label>
+            開演時間
+            <input type="time" id="startTime" />
+          </label>
+
+          <label>
+            グループ
+            <select id="groupName" required>
+              <option value="">選択してください</option>
+              <option value="モーニング娘。'26">モーニング娘。'26</option>
+              <option value="アンジュルム">アンジュルム</option>
+              <option value="Juice=Juice">Juice=Juice</option>
+              <option value="つばきファクトリー">つばきファクトリー</option>
+              <option value="BEYOOOOONDS">BEYOOOOONDS</option>
+              <option value="OCHA NORMA">OCHA NORMA</option>
+              <option value="ロージークロニクル">ロージークロニクル</option>
+              <option value="ハロプロ研修生">ハロプロ研修生</option>
+              <option value="複数グループ">複数グループ</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            種別
+            <select id="eventType" required>
+              <option value="">選択してください</option>
+              <option value="CONCERT">CONCERT</option>
+              <option value="FC EVENT">FC EVENT</option>
+              <option value="BD EVENT">BD EVENT</option>
+              <option value="RELEASE EVENT">RELEASE EVENT</option>
+              <option value="STAGE">STAGE</option>
+              <option value="STREAM">STREAM</option>
+              <option value="OTHER">OTHER</option>
+            </select>
+          </label>
+
+          <label class="wide">
+            イベント名
+            <input type="text" id="eventTitle" required placeholder="例：アンジュルム コンサートツアー 2026春" />
+          </label>
+
+          <label>
+            会場
+            <input type="text" id="venue" placeholder="例：日本武道館" />
+          </label>
+
+          <label>
+            都道府県
+            <input type="text" id="prefecture" placeholder="例：東京" />
+          </label>
+
+          <label>
+            申込締切
+            <input type="date" id="applicationDeadline" />
+          </label>
+
+          <label>
+            当落発表日
+            <input type="date" id="lotteryDate" />
+          </label>
+
+          <label>
+            支払期限
+            <input type="date" id="paymentDeadline" />
+          </label>
+
+          <label>
+            状態
+            <select id="status">
+              <option value="候補">候補</option>
+              <option value="申込予定">申込予定</option>
+              <option value="申込済">申込済</option>
+              <option value="当選">当選</option>
+              <option value="落選">落選</option>
+              <option value="見送り">見送り</option>
+            </select>
+          </label>
+
+          <label class="wide">
+            情報源URL
+            <input type="url" id="sourceUrl" placeholder="https://..." />
+          </label>
+
+          <label class="wide">
+            メモ
+            <textarea id="memo" rows="3" placeholder="FC先行、一般発売、昼夜公演など"></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button">登録</button>
+          <button type="button" id="resetButton">入力クリア</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">イベント候補 一覧</div>
+
+      <div class="toolbar">
+        <label>
+          検索
+          <input type="text" id="searchInput" placeholder="イベント名・会場・グループで検索" />
+        </label>
+
+        <label>
+          状態
+          <select id="statusFilter">
+            <option value="">すべて</option>
+            <option value="候補">候補</option>
+            <option value="申込予定">申込予定</option>
+            <option value="申込済">申込済</option>
+            <option value="当選">当選</option>
+            <option value="落選">落選</option>
+            <option value="見送り">見送り</option>
+          </select>
+        </label>
+
+        <button type="button" id="exportJsonButton">JSON出力</button>
+        <button type="button" id="clearAllButton" class="danger-button">全削除</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>開催日</th>
+              <th>開演</th>
+              <th>グループ</th>
+              <th>種別</th>
+              <th>イベント名</th>
+              <th>会場</th>
+              <th>申込締切</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="eventTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        登録件数：<span id="eventCount">0</span> 件
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    SUPER HELLO Classic Office UI / localStorage mode
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
