@@ -9,13 +9,14 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.6</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.7</div>
   </header>
 
   <nav class="top-menu">
     <button class="menu-button active">イベント候補</button>
     <button class="menu-button active">参加予定</button>
     <button class="menu-button active">支払い</button>
+    <button class="menu-button active">グッズ</button>
     <button class="menu-button active">MCY連携</button>
     <button class="menu-button active">期限管理</button>
     <button class="menu-button" disabled>集計</button>
@@ -465,12 +466,205 @@
     </section>
 
     <section class="panel">
-  <div class="panel-title">チケット代・支払い管理</div>
-  ...
-</section>
+      <div class="panel-title">グッズ・物販管理</div>
 
-<section class="panel">
-  <div class="panel-title">MCY連携 出力</div>
+      <div class="toolbar">
+        <label>
+          グッズ検索
+          <input type="text" id="goodsSearchInput" placeholder="イベント名・商品名・メンバーで検索" />
+        </label>
+
+        <label>
+          グループ
+          <select id="goodsGroupFilter">
+            <option value="">すべて</option>
+            <option value="モーニング娘。'26">モーニング娘。'26</option>
+            <option value="アンジュルム">アンジュルム</option>
+            <option value="Juice=Juice">Juice=Juice</option>
+            <option value="つばきファクトリー">つばきファクトリー</option>
+            <option value="BEYOOOOONDS">BEYOOOOONDS</option>
+            <option value="OCHA NORMA">OCHA NORMA</option>
+            <option value="ロージークロニクル">ロージークロニクル</option>
+            <option value="ハロプロ研修生">ハロプロ研修生</option>
+            <option value="複数グループ">複数グループ</option>
+            <option value="その他">その他</option>
+          </select>
+        </label>
+
+        <label>
+          MCY連携状態
+          <select id="goodsMcyStatusFilter">
+            <option value="">すべて</option>
+            <option value="未連携">未連携</option>
+            <option value="連携済">連携済</option>
+            <option value="対象外">対象外</option>
+          </select>
+        </label>
+
+        <button type="button" id="newGoodsButton" class="primary-button">グッズ新規登録</button>
+        <button type="button" id="exportGoodsJsonButton">グッズJSON出力</button>
+        <button type="button" id="clearGoodsButton" class="danger-button">グッズ全削除</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table goods-table">
+          <thead>
+            <tr>
+              <th>グッズID</th>
+              <th>購入日</th>
+              <th>イベント</th>
+              <th>グループ</th>
+              <th>メンバー</th>
+              <th>商品名</th>
+              <th>カテゴリ</th>
+              <th>購入場所</th>
+              <th>数量</th>
+              <th>単価</th>
+              <th>合計</th>
+              <th>支払方法</th>
+              <th>MCY連携状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="goodsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        グッズ表示件数：<span id="goodsCount">0</span> 件 /
+        表示合計：<span id="goodsTotal">0</span> 円
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">グッズ 編集</div>
+
+      <form id="goodsForm" class="event-form">
+        <div class="form-grid">
+          <label>
+            グッズID
+            <input type="text" id="goodsId" readonly />
+          </label>
+
+          <label class="wide">
+            関連イベント
+            <select id="goodsEventId">
+              <option value="">イベント未紐付け</option>
+            </select>
+          </label>
+
+          <label>
+            購入日
+            <input type="date" id="goodsPurchaseDate" required />
+          </label>
+
+          <label>
+            グループ
+            <select id="goodsGroupName" required>
+              <option value="">選択してください</option>
+              <option value="モーニング娘。'26">モーニング娘。'26</option>
+              <option value="アンジュルム">アンジュルム</option>
+              <option value="Juice=Juice">Juice=Juice</option>
+              <option value="つばきファクトリー">つばきファクトリー</option>
+              <option value="BEYOOOOONDS">BEYOOOOONDS</option>
+              <option value="OCHA NORMA">OCHA NORMA</option>
+              <option value="ロージークロニクル">ロージークロニクル</option>
+              <option value="ハロプロ研修生">ハロプロ研修生</option>
+              <option value="複数グループ">複数グループ</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            メンバー
+            <input type="text" id="goodsMemberName" placeholder="任意" />
+          </label>
+
+          <label class="wide">
+            商品名
+            <input type="text" id="goodsItemName" required placeholder="例：日替わり写真 A5ワイドサイズ" />
+          </label>
+
+          <label>
+            カテゴリ
+            <select id="goodsCategory">
+              <option value="写真">写真</option>
+              <option value="FSK">FSK</option>
+              <option value="アクスタ">アクスタ</option>
+              <option value="Tシャツ">Tシャツ</option>
+              <option value="タオル">タオル</option>
+              <option value="ペンライト">ペンライト</option>
+              <option value="CD/DVD/Blu-ray">CD/DVD/Blu-ray</option>
+              <option value="書籍">書籍</option>
+              <option value="通販">通販</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            購入場所
+            <select id="goodsPurchasePlace">
+              <option value="会場物販">会場物販</option>
+              <option value="事前通販">事前通販</option>
+              <option value="FC通販">FC通販</option>
+              <option value="ハロショ">ハロショ</option>
+              <option value="オンラインストア">オンラインストア</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            数量
+            <input type="number" id="goodsQuantity" min="1" step="1" value="1" />
+          </label>
+
+          <label>
+            単価
+            <input type="number" id="goodsUnitPrice" min="0" step="1" />
+          </label>
+
+          <label>
+            合計金額
+            <input type="number" id="goodsTotalAmount" min="0" step="1" />
+          </label>
+
+          <label>
+            支払方法
+            <select id="goodsPaymentMethod">
+              <option value="">未定</option>
+              <option value="クレカ">クレカ</option>
+              <option value="現金">現金</option>
+              <option value="電子マネー">電子マネー</option>
+              <option value="PayPay">PayPay</option>
+              <option value="コンビニ">コンビニ</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            MCY連携状態
+            <select id="goodsMcyExportStatus">
+              <option value="未連携">未連携</option>
+              <option value="連携済">連携済</option>
+              <option value="対象外">対象外</option>
+            </select>
+          </label>
+
+          <label class="wide">
+            メモ
+            <textarea id="goodsMemo" rows="3" placeholder="通販注文番号、ランダム結果、同行者分など"></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button">グッズを登録</button>
+          <button type="button" id="resetGoodsButton">グッズ入力クリア</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">MCY連携 出力</div>
 
   <div class="toolbar">
     <label>
@@ -511,12 +705,7 @@
     MCY出力対象：<span id="mcyPreviewCount">0</span> 件 /
     出力合計：<span id="mcyPreviewTotal">0</span> 円
   </div>
-</section>
-
-<section class="panel">
-  <div class="panel-title">支払い 編集</div>
-  ...
-</section>
+    </section>
 
     <section class="panel">
       <div class="panel-title">支払い 編集</div>

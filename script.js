@@ -2,15 +2,18 @@ const EVENT_STORAGE_KEY = "superHelloEventsV01";
 const PARTICIPATION_STORAGE_KEY = "superHelloParticipationsV02";
 const PAYMENT_STORAGE_KEY = "superHelloPaymentsV03";
 const MCY_EXPORT_LOG_STORAGE_KEY = "superHelloMcyExportLogsV04";
+const GOODS_STORAGE_KEY = "superHelloGoodsV07";
 
 let events = [];
 let participations = [];
 let payments = [];
 let mcyExportLogs = [];
+let goods = [];
 
 let editingId = null;
 let editingParticipationId = null;
 let editingPaymentId = null;
+let editingGoodsId = null;
 let importPreviewData = null;
 
 const eventForm = document.getElementById("eventForm");
@@ -45,6 +48,17 @@ const paymentStatusFilter = document.getElementById("paymentStatusFilter");
 const exportPaymentJsonButton = document.getElementById("exportPaymentJsonButton");
 const clearPaymentButton = document.getElementById("clearPaymentButton");
 const resetPaymentButton = document.getElementById("resetPaymentButton");
+const goodsForm = document.getElementById("goodsForm");
+const goodsTableBody = document.getElementById("goodsTableBody");
+const goodsCount = document.getElementById("goodsCount");
+const goodsTotal = document.getElementById("goodsTotal");
+const goodsSearchInput = document.getElementById("goodsSearchInput");
+const goodsGroupFilter = document.getElementById("goodsGroupFilter");
+const goodsMcyStatusFilter = document.getElementById("goodsMcyStatusFilter");
+const newGoodsButton = document.getElementById("newGoodsButton");
+const exportGoodsJsonButton = document.getElementById("exportGoodsJsonButton");
+const clearGoodsButton = document.getElementById("clearGoodsButton");
+const resetGoodsButton = document.getElementById("resetGoodsButton");
 const mcyExportTarget = document.getElementById("mcyExportTarget");
 const exportMcyCsvButton = document.getElementById("exportMcyCsvButton");
 const exportMcyJsonButton = document.getElementById("exportMcyJsonButton");
@@ -93,6 +107,15 @@ function saveMcyExportLogs() {
   localStorage.setItem(MCY_EXPORT_LOG_STORAGE_KEY, JSON.stringify(mcyExportLogs));
 }
 
+function loadGoods() {
+  const raw = localStorage.getItem(GOODS_STORAGE_KEY);
+  goods = raw ? JSON.parse(raw) : [];
+}
+
+function saveGoods() {
+  localStorage.setItem(GOODS_STORAGE_KEY, JSON.stringify(goods));
+}
+
 function generateId(prefix) {
   const now = new Date();
   const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
@@ -107,6 +130,10 @@ function yen(value) {
 
 function getPaymentTotal(payment) {
   return Number(payment.ticketPrice || 0) + Number(payment.ticketFee || 0);
+}
+
+function getGoodsTotal(item) {
+  return Number(item.totalAmount || 0);
 }
 
 function getEventById(eventId) {
@@ -526,6 +553,69 @@ function resetPaymentForm() {
   document.getElementById("mcyExportStatus").value = "未連携";
 }
 
+function getGoodsFormData() {
+  const quantity = Number(document.getElementById("goodsQuantity").value || 0);
+  const unitPrice = Number(document.getElementById("goodsUnitPrice").value || 0);
+  const totalAmount = document.getElementById("goodsTotalAmount").value || String(quantity * unitPrice);
+
+  return {
+    goodsId: editingGoodsId || document.getElementById("goodsId").value || generateId("GD"),
+    eventId: document.getElementById("goodsEventId").value,
+    purchaseDate: document.getElementById("goodsPurchaseDate").value,
+    groupName: document.getElementById("goodsGroupName").value,
+    memberName: document.getElementById("goodsMemberName").value.trim(),
+    itemName: document.getElementById("goodsItemName").value.trim(),
+    goodsCategory: document.getElementById("goodsCategory").value,
+    purchasePlace: document.getElementById("goodsPurchasePlace").value,
+    quantity: document.getElementById("goodsQuantity").value,
+    unitPrice: document.getElementById("goodsUnitPrice").value,
+    totalAmount,
+    paymentMethod: document.getElementById("goodsPaymentMethod").value,
+    mcyExportStatus: document.getElementById("goodsMcyExportStatus").value,
+    goodsMemo: document.getElementById("goodsMemo").value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function setGoodsFormData(item) {
+  editingGoodsId = item.goodsId;
+
+  document.getElementById("goodsId").value = item.goodsId || "";
+  document.getElementById("goodsEventId").value = item.eventId || "";
+  document.getElementById("goodsPurchaseDate").value = item.purchaseDate || "";
+  document.getElementById("goodsGroupName").value = item.groupName || "";
+  document.getElementById("goodsMemberName").value = item.memberName || "";
+  document.getElementById("goodsItemName").value = item.itemName || "";
+  document.getElementById("goodsCategory").value = item.goodsCategory || "写真";
+  document.getElementById("goodsPurchasePlace").value = item.purchasePlace || "会場物販";
+  document.getElementById("goodsQuantity").value = item.quantity || "1";
+  document.getElementById("goodsUnitPrice").value = item.unitPrice || "";
+  document.getElementById("goodsTotalAmount").value = item.totalAmount || "";
+  document.getElementById("goodsPaymentMethod").value = item.paymentMethod || "";
+  document.getElementById("goodsMcyExportStatus").value = item.mcyExportStatus || "未連携";
+  document.getElementById("goodsMemo").value = item.goodsMemo || "";
+
+  document.querySelector("#goodsForm .primary-button").textContent = "グッズを更新";
+}
+
+function resetGoodsForm() {
+  editingGoodsId = null;
+  goodsForm.reset();
+  document.getElementById("goodsId").value = generateId("GD");
+  document.getElementById("goodsEventId").value = "";
+  document.getElementById("goodsCategory").value = "写真";
+  document.getElementById("goodsPurchasePlace").value = "会場物販";
+  document.getElementById("goodsQuantity").value = "1";
+  document.getElementById("goodsMcyExportStatus").value = "未連携";
+  document.querySelector("#goodsForm .primary-button").textContent = "グッズを登録";
+}
+
+function syncGoodsTotalAmount() {
+  const quantity = Number(document.getElementById("goodsQuantity").value || 0);
+  const unitPrice = Number(document.getElementById("goodsUnitPrice").value || 0);
+  document.getElementById("goodsTotalAmount").value = quantity && unitPrice ? String(quantity * unitPrice) : "";
+}
+
 function formatDate(value) {
   if (!value) return "";
   return value;
@@ -573,6 +663,20 @@ function getParticipationsByEventId(eventId) {
 function getPaymentsByEventId(eventId) {
   const participationIds = new Set(getParticipationsByEventId(eventId).map((participation) => participation.id));
   return payments.filter((payment) => participationIds.has(payment.participationId));
+}
+
+function populateGoodsEventSelect() {
+  const currentValue = document.getElementById("goodsEventId").value;
+  const options = events
+    .slice()
+    .sort((a, b) => (a.eventDate || "9999-12-31").localeCompare(b.eventDate || "9999-12-31"))
+    .map((event) => {
+      const label = [event.eventDate, event.groupName, event.eventTitle].filter(Boolean).join(" / ");
+      return `<option value="${escapeAttribute(event.id)}">${escapeHtml(label)}</option>`;
+    });
+
+  document.getElementById("goodsEventId").innerHTML = `<option value="">イベント未紐付け</option>${options.join("")}`;
+  document.getElementById("goodsEventId").value = events.some((event) => event.id === currentValue) ? currentValue : "";
 }
 
 function hasSuppressedParticipationStatus(eventId) {
@@ -817,6 +921,44 @@ function getFilteredPayments() {
     });
 }
 
+function getFilteredGoods() {
+  const keyword = goodsSearchInput.value.trim().toLowerCase();
+  const selectedGroup = goodsGroupFilter.value;
+  const selectedMcyStatus = goodsMcyStatusFilter.value;
+
+  return goods
+    .map((item) => {
+      const event = getEventById(item.eventId);
+      return { ...item, event };
+    })
+    .filter((item) => {
+      const text = [
+        item.goodsId,
+        item.event?.eventDate,
+        item.event?.eventTitle,
+        item.event?.venue,
+        item.groupName,
+        item.memberName,
+        item.itemName,
+        item.goodsCategory,
+        item.purchasePlace,
+        item.paymentMethod,
+        item.goodsMemo
+      ].join(" ").toLowerCase();
+
+      const matchesKeyword = !keyword || text.includes(keyword);
+      const matchesGroup = !selectedGroup || item.groupName === selectedGroup;
+      const matchesMcyStatus = !selectedMcyStatus || item.mcyExportStatus === selectedMcyStatus;
+
+      return matchesKeyword && matchesGroup && matchesMcyStatus;
+    })
+    .sort((a, b) => {
+      const dateA = a.purchaseDate || "9999-12-31";
+      const dateB = b.purchaseDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
 function renderEvents() {
   const filtered = getFilteredEvents();
 
@@ -945,11 +1087,61 @@ function renderPayments() {
   paymentTotal.textContent = yen(totalAmount);
 }
 
+function renderGoods() {
+  const filtered = getFilteredGoods();
+
+  goodsTableBody.innerHTML = "";
+
+  if (filtered.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="14">グッズ情報はありません。</td>`;
+    goodsTableBody.appendChild(row);
+  } else {
+    filtered.forEach((item) => {
+      const event = item.event;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${escapeHtml(item.goodsId)}</td>
+        <td>${escapeHtml(item.purchaseDate || "")}</td>
+        <td>${event ? renderGoodsEventCell(event) : "未紐付け"}</td>
+        <td>${escapeHtml(item.groupName || "")}</td>
+        <td>${escapeHtml(item.memberName || "")}</td>
+        <td>${escapeHtml(item.itemName || "")}</td>
+        <td>${escapeHtml(item.goodsCategory || "")}</td>
+        <td>${escapeHtml(item.purchasePlace || "")}</td>
+        <td class="money">${escapeHtml(item.quantity || "")}</td>
+        <td class="money">${yen(item.unitPrice)}</td>
+        <td class="money">${yen(item.totalAmount)}</td>
+        <td>${escapeHtml(item.paymentMethod || "")}</td>
+        <td><span class="status status-${escapeHtml(item.mcyExportStatus)}">${escapeHtml(item.mcyExportStatus)}</span></td>
+        <td>
+          <div class="action-buttons">
+            <button class="small-button" data-action="edit-goods" data-id="${escapeAttribute(item.goodsId)}">編集</button>
+            <button class="small-button" data-action="delete-goods" data-id="${escapeAttribute(item.goodsId)}">削除</button>
+          </div>
+        </td>
+      `;
+
+      goodsTableBody.appendChild(row);
+    });
+  }
+
+  const totalAmount = filtered.reduce((sum, item) => sum + getGoodsTotal(item), 0);
+  goodsCount.textContent = String(filtered.length);
+  goodsTotal.textContent = yen(totalAmount);
+}
+
 function renderTitleCell(event) {
   const title = escapeHtml(event.eventTitle);
   if (!event.sourceUrl) return title;
 
   return `<a href="${escapeAttribute(event.sourceUrl)}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+}
+
+function renderGoodsEventCell(event) {
+  const dateText = event.eventDate ? `${escapeHtml(event.eventDate)} / ` : "";
+  return `${dateText}${renderTitleCell(event)}`;
 }
 
 function escapeHtml(value) {
@@ -981,6 +1173,9 @@ function upsertEvent(event) {
   renderEvents();
   renderParticipations();
   renderPayments();
+  populateGoodsEventSelect();
+  renderGoods();
+  renderMcyPreview();
   renderReminders();
 }
 
@@ -1018,6 +1213,23 @@ function upsertPayment(payment) {
   renderPayments();
   renderMcyPreview();
   renderReminders();
+}
+
+function upsertGoods(item) {
+  const index = goods.findIndex((goodsItem) => goodsItem.goodsId === item.goodsId);
+
+  if (index >= 0) {
+    goods[index] = item;
+  } else {
+    goods.push({
+      ...item,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveGoods();
+  renderGoods();
+  renderMcyPreview();
 }
 
 function addParticipationFromEvent(eventId) {
@@ -1109,6 +1321,10 @@ function scrollToPaymentForm() {
   paymentForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function scrollToGoodsForm() {
+  goodsForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function deleteEvent(id) {
   const target = events.find((event) => event.id === id);
   if (!target) return;
@@ -1126,6 +1342,9 @@ function deleteEvent(id) {
   renderEvents();
   renderParticipations();
   renderPayments();
+  populateGoodsEventSelect();
+  renderGoods();
+  renderMcyPreview();
   renderReminders();
 
   if (editingId === id) {
@@ -1180,6 +1399,23 @@ function deletePayment(id) {
   }
 }
 
+function deleteGoods(id) {
+  const target = goods.find((item) => item.goodsId === id);
+  if (!target) return;
+
+  const ok = confirm(`グッズ情報を削除しますか？\n${target.itemName || target.goodsId}`);
+  if (!ok) return;
+
+  goods = goods.filter((item) => item.goodsId !== id);
+  saveGoods();
+  renderGoods();
+  renderMcyPreview();
+
+  if (editingGoodsId === id) {
+    resetGoodsForm();
+  }
+}
+
 function exportJson(filenamePrefix, data) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -1227,7 +1463,32 @@ function getMcyExportPayments() {
     });
 }
 
-function buildMcyRows() {
+function getMcyExportGoods() {
+  const target = mcyExportTarget.value;
+
+  return goods
+    .map((item) => {
+      const event = getEventById(item.eventId);
+      return { ...item, event };
+    })
+    .filter((item) => {
+      if (item.mcyExportStatus === "対象外") return false;
+      if (!getGoodsTotal(item)) return false;
+
+      if (target === "unexported-paid" || target === "unexported-all") {
+        return item.mcyExportStatus === "未連携";
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = a.purchaseDate || "9999-12-31";
+      const dateB = b.purchaseDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
+function buildMcyPaymentRows() {
   return getMcyExportPayments().map((payment) => {
     const event = payment.event;
     const total = getPaymentTotal(payment);
@@ -1251,12 +1512,47 @@ function buildMcyRows() {
   });
 }
 
+function buildMcyGoodsRows() {
+  return getMcyExportGoods().map((item) => {
+    const event = item.event;
+    const eventText = event?.eventTitle ? `関連イベント:${event.eventTitle}` : "";
+    const eventDateText = event?.eventDate ? `公演日:${event.eventDate}` : "";
+    const placeText = item.purchasePlace ? `購入場所:${item.purchasePlace}` : "";
+    const categoryText = item.goodsCategory ? `カテゴリ:${item.goodsCategory}` : "";
+    const memoParts = [placeText, categoryText, eventText, eventDateText, item.goodsMemo].filter(Boolean);
+
+    return {
+      date: item.purchaseDate || "",
+      majorCategory: "趣味",
+      middleCategory: "グッズ",
+      description: buildMcyGoodsDescription(item),
+      amount: getGoodsTotal(item),
+      paymentMethod: item.paymentMethod || "",
+      source: "SUPER HELLO",
+      sourceId: item.goodsId,
+      note: memoParts.join(" / ")
+    };
+  });
+}
+
+function buildMcyRows() {
+  return [...buildMcyPaymentRows(), ...buildMcyGoodsRows()].sort((a, b) => {
+    const dateCompare = (a.date || "9999-12-31").localeCompare(b.date || "9999-12-31");
+    if (dateCompare !== 0) return dateCompare;
+    return String(a.sourceId).localeCompare(String(b.sourceId));
+  });
+}
+
 function buildMcyDescription(payment, event) {
   const group = event?.groupName || "";
   const title = event?.eventTitle || "イベント不明";
   const item = payment.paymentItem || "チケット代";
 
   return [group, title, item].filter(Boolean).join(" ");
+}
+
+function buildMcyGoodsDescription(item) {
+  return [item.groupName, item.memberName, item.itemName, "グッズ代"].filter(Boolean).join(" ");
 }
 
 function renderMcyPreview() {
@@ -1378,16 +1674,19 @@ function recordMcyExportLog(format, rows) {
 
 function markDisplayedMcyRowsAsExported() {
   const targetPayments = getMcyExportPayments();
+  const targetGoods = getMcyExportGoods();
+  const targetCount = targetPayments.length + targetGoods.length;
 
-  if (targetPayments.length === 0) {
+  if (targetCount === 0) {
     alert("連携済にする対象がありません。");
     return;
   }
 
-  const ok = confirm(`表示中の ${targetPayments.length} 件を「連携済」に更新します。\nよろしいですか？`);
+  const ok = confirm(`表示中の ${targetCount} 件を「連携済」に更新します。\nよろしいですか？`);
   if (!ok) return;
 
   const targetIds = new Set(targetPayments.map((payment) => payment.id));
+  const targetGoodsIds = new Set(targetGoods.map((item) => item.goodsId));
 
   payments = payments.map((payment) => {
     if (!targetIds.has(payment.id)) return payment;
@@ -1399,8 +1698,20 @@ function markDisplayedMcyRowsAsExported() {
     };
   });
 
+  goods = goods.map((item) => {
+    if (!targetGoodsIds.has(item.goodsId)) return item;
+
+    return {
+      ...item,
+      mcyExportStatus: "連携済",
+      updatedAt: new Date().toISOString()
+    };
+  });
+
   savePayments();
+  saveGoods();
   renderPayments();
+  renderGoods();
   renderMcyPreview();
 
   alert("表示分を連携済に更新しました。");
@@ -1470,6 +1781,20 @@ paymentForm.addEventListener("submit", (event) => {
   resetPaymentForm();
 });
 
+goodsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const formData = getGoodsFormData();
+
+  if (!formData.purchaseDate || !formData.groupName || !formData.itemName) {
+    alert("購入日・グループ・商品名は必須です。");
+    return;
+  }
+
+  upsertGoods(formData);
+  resetGoodsForm();
+});
+
 resetButton.addEventListener("click", () => {
   resetForm();
 });
@@ -1480,6 +1805,15 @@ resetParticipationButton.addEventListener("click", () => {
 
 resetPaymentButton.addEventListener("click", () => {
   resetPaymentForm();
+});
+
+resetGoodsButton.addEventListener("click", () => {
+  resetGoodsForm();
+});
+
+newGoodsButton.addEventListener("click", () => {
+  resetGoodsForm();
+  scrollToGoodsForm();
 });
 
 searchInput.addEventListener("input", () => {
@@ -1504,6 +1838,33 @@ paymentSearchInput.addEventListener("input", () => {
 
 paymentStatusFilter.addEventListener("change", () => {
   renderPayments();
+});
+
+goodsSearchInput.addEventListener("input", () => {
+  renderGoods();
+});
+
+goodsGroupFilter.addEventListener("change", () => {
+  renderGoods();
+});
+
+goodsMcyStatusFilter.addEventListener("change", () => {
+  renderGoods();
+});
+
+document.getElementById("goodsQuantity").addEventListener("input", () => {
+  syncGoodsTotalAmount();
+});
+
+document.getElementById("goodsUnitPrice").addEventListener("input", () => {
+  syncGoodsTotalAmount();
+});
+
+document.getElementById("goodsEventId").addEventListener("change", () => {
+  const event = getEventById(document.getElementById("goodsEventId").value);
+  if (event?.groupName) {
+    document.getElementById("goodsGroupName").value = event.groupName;
+  }
 });
 
 reminderTargetFilter.addEventListener("change", () => {
@@ -1579,6 +1940,26 @@ paymentTableBody.addEventListener("click", (event) => {
   }
 });
 
+goodsTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (action === "edit-goods") {
+    const target = goods.find((item) => item.goodsId === id);
+    if (target) {
+      setGoodsFormData(target);
+      scrollToGoodsForm();
+    }
+  }
+
+  if (action === "delete-goods") {
+    deleteGoods(id);
+  }
+});
+
 reminderTableBody.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -1620,6 +2001,10 @@ exportPaymentJsonButton.addEventListener("click", () => {
   exportJson("super-hello-payments", payments);
 });
 
+exportGoodsJsonButton.addEventListener("click", () => {
+  exportJson("super-hello-goods", goods);
+});
+
 mcyExportTarget.addEventListener("change", () => {
   renderMcyPreview();
 });
@@ -1648,6 +2033,9 @@ clearAllButton.addEventListener("click", () => {
   renderEvents();
   renderParticipations();
   renderPayments();
+  populateGoodsEventSelect();
+  renderGoods();
+  renderMcyPreview();
   renderReminders();
 });
 
@@ -1662,6 +2050,7 @@ clearParticipationButton.addEventListener("click", () => {
   resetParticipationForm();
   renderParticipations();
   renderPayments();
+  renderMcyPreview();
   renderReminders();
 });
 
@@ -1679,13 +2068,30 @@ clearPaymentButton.addEventListener("click", () => {
   renderReminders();
 });
 
+clearGoodsButton.addEventListener("click", () => {
+  if (goods.length === 0) return;
+
+  const ok = confirm("グッズ情報をすべて削除します。\nイベント候補・参加予定・支払い情報は削除されません。\nよろしいですか？");
+  if (!ok) return;
+
+  goods = [];
+  saveGoods();
+  resetGoodsForm();
+  renderGoods();
+  renderMcyPreview();
+});
+
 loadEvents();
 loadParticipations();
 loadPayments();
 loadMcyExportLogs();
+loadGoods();
 
+populateGoodsEventSelect();
+resetGoodsForm();
 renderEvents();
 renderParticipations();
 renderPayments();
+renderGoods();
 renderMcyPreview();
 renderReminders();

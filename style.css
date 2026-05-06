@@ -312,6 +312,10 @@ input[readonly] {
   min-width: 1600px;
 }
 
+.goods-table {
+  min-width: 1750px;
+}
+
 .status-未払い {
   background: #fff0cc;
 }
