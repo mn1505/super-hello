@@ -316,6 +316,10 @@ input[readonly] {
   min-width: 1750px;
 }
 
+.travel-table {
+  min-width: 1950px;
+}
+
 .status-未払い {
   background: #fff0cc;
 }
@@ -330,6 +334,26 @@ input[readonly] {
 
 .status-返金済 {
   background: #d9edf7;
+}
+
+.status-未予約 {
+  background: #eeeeee;
+}
+
+.status-予約予定 {
+  background: #dbeaff;
+}
+
+.status-予約済 {
+  background: #ccd9ff;
+}
+
+.status-キャンセル {
+  background: #f2dede;
+}
+
+.status-利用済 {
+  background: #d9ead3;
 }
 
 .status-未連携 {

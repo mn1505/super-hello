@@ -3,17 +3,20 @@ const PARTICIPATION_STORAGE_KEY = "superHelloParticipationsV02";
 const PAYMENT_STORAGE_KEY = "superHelloPaymentsV03";
 const MCY_EXPORT_LOG_STORAGE_KEY = "superHelloMcyExportLogsV04";
 const GOODS_STORAGE_KEY = "superHelloGoodsV07";
+const TRAVEL_STORAGE_KEY = "superHelloTravelsV08";
 
 let events = [];
 let participations = [];
 let payments = [];
 let mcyExportLogs = [];
 let goods = [];
+let travels = [];
 
 let editingId = null;
 let editingParticipationId = null;
 let editingPaymentId = null;
 let editingGoodsId = null;
+let editingTravelId = null;
 let importPreviewData = null;
 
 const eventForm = document.getElementById("eventForm");
@@ -59,6 +62,17 @@ const newGoodsButton = document.getElementById("newGoodsButton");
 const exportGoodsJsonButton = document.getElementById("exportGoodsJsonButton");
 const clearGoodsButton = document.getElementById("clearGoodsButton");
 const resetGoodsButton = document.getElementById("resetGoodsButton");
+const travelForm = document.getElementById("travelForm");
+const travelTableBody = document.getElementById("travelTableBody");
+const travelCount = document.getElementById("travelCount");
+const travelTotal = document.getElementById("travelTotal");
+const travelSearchInput = document.getElementById("travelSearchInput");
+const travelBookingStatusFilter = document.getElementById("travelBookingStatusFilter");
+const travelMcyStatusFilter = document.getElementById("travelMcyStatusFilter");
+const newTravelButton = document.getElementById("newTravelButton");
+const exportTravelJsonButton = document.getElementById("exportTravelJsonButton");
+const clearTravelButton = document.getElementById("clearTravelButton");
+const resetTravelButton = document.getElementById("resetTravelButton");
 const mcyExportTarget = document.getElementById("mcyExportTarget");
 const exportMcyCsvButton = document.getElementById("exportMcyCsvButton");
 const exportMcyJsonButton = document.getElementById("exportMcyJsonButton");
@@ -116,6 +130,15 @@ function saveGoods() {
   localStorage.setItem(GOODS_STORAGE_KEY, JSON.stringify(goods));
 }
 
+function loadTravels() {
+  const raw = localStorage.getItem(TRAVEL_STORAGE_KEY);
+  travels = raw ? JSON.parse(raw) : [];
+}
+
+function saveTravels() {
+  localStorage.setItem(TRAVEL_STORAGE_KEY, JSON.stringify(travels));
+}
+
 function generateId(prefix) {
   const now = new Date();
   const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
@@ -134,6 +157,10 @@ function getPaymentTotal(payment) {
 
 function getGoodsTotal(item) {
   return Number(item.totalAmount || 0);
+}
+
+function getTravelTotal(travel) {
+  return Number(travel.totalTravelCost || 0);
 }
 
 function getEventById(eventId) {
@@ -616,6 +643,82 @@ function syncGoodsTotalAmount() {
   document.getElementById("goodsTotalAmount").value = quantity && unitPrice ? String(quantity * unitPrice) : "";
 }
 
+function getTravelFormData() {
+  const transportationCost = Number(document.getElementById("transportationCost").value || 0);
+  const hotelCost = Number(document.getElementById("hotelCost").value || 0);
+  const otherTravelCost = Number(document.getElementById("otherTravelCost").value || 0);
+  const calculatedTotal = transportationCost + hotelCost + otherTravelCost;
+  const totalTravelCost = document.getElementById("totalTravelCost").value || String(calculatedTotal);
+
+  return {
+    travelId: editingTravelId || document.getElementById("travelId").value || generateId("TR"),
+    eventId: document.getElementById("travelEventId").value,
+    departureDate: document.getElementById("departureDate").value,
+    returnDate: document.getElementById("returnDate").value,
+    transportationType: document.getElementById("transportationType").value,
+    departurePlace: document.getElementById("departurePlace").value.trim(),
+    arrivalPlace: document.getElementById("arrivalPlace").value.trim(),
+    transportationCost: document.getElementById("transportationCost").value,
+    hotelName: document.getElementById("hotelName").value.trim(),
+    checkInDate: document.getElementById("checkInDate").value,
+    checkOutDate: document.getElementById("checkOutDate").value,
+    hotelCost: document.getElementById("hotelCost").value,
+    otherTravelCost: document.getElementById("otherTravelCost").value,
+    totalTravelCost,
+    paymentDate: document.getElementById("travelPaymentDate").value,
+    paymentMethod: document.getElementById("travelPaymentMethod").value,
+    bookingStatus: document.getElementById("bookingStatus").value,
+    mcyExportStatus: document.getElementById("travelMcyExportStatus").value,
+    travelMemo: document.getElementById("travelMemo").value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function setTravelFormData(travel) {
+  editingTravelId = travel.travelId;
+
+  document.getElementById("travelId").value = travel.travelId || "";
+  document.getElementById("travelEventId").value = travel.eventId || "";
+  document.getElementById("departureDate").value = travel.departureDate || "";
+  document.getElementById("returnDate").value = travel.returnDate || "";
+  document.getElementById("transportationType").value = travel.transportationType || "";
+  document.getElementById("departurePlace").value = travel.departurePlace || "";
+  document.getElementById("arrivalPlace").value = travel.arrivalPlace || "";
+  document.getElementById("transportationCost").value = travel.transportationCost || "";
+  document.getElementById("hotelName").value = travel.hotelName || "";
+  document.getElementById("checkInDate").value = travel.checkInDate || "";
+  document.getElementById("checkOutDate").value = travel.checkOutDate || "";
+  document.getElementById("hotelCost").value = travel.hotelCost || "";
+  document.getElementById("otherTravelCost").value = travel.otherTravelCost || "";
+  document.getElementById("totalTravelCost").value = travel.totalTravelCost || "";
+  document.getElementById("travelPaymentDate").value = travel.paymentDate || "";
+  document.getElementById("travelPaymentMethod").value = travel.paymentMethod || "";
+  document.getElementById("bookingStatus").value = travel.bookingStatus || "未予約";
+  document.getElementById("travelMcyExportStatus").value = travel.mcyExportStatus || "未連携";
+  document.getElementById("travelMemo").value = travel.travelMemo || "";
+
+  document.querySelector("#travelForm .primary-button").textContent = "遠征を更新";
+}
+
+function resetTravelForm() {
+  editingTravelId = null;
+  travelForm.reset();
+  document.getElementById("travelId").value = generateId("TR");
+  document.getElementById("travelEventId").value = "";
+  document.getElementById("transportationType").value = "";
+  document.getElementById("bookingStatus").value = "未予約";
+  document.getElementById("travelMcyExportStatus").value = "未連携";
+  document.querySelector("#travelForm .primary-button").textContent = "遠征を登録";
+}
+
+function syncTravelTotalAmount() {
+  const transportationCost = Number(document.getElementById("transportationCost").value || 0);
+  const hotelCost = Number(document.getElementById("hotelCost").value || 0);
+  const otherTravelCost = Number(document.getElementById("otherTravelCost").value || 0);
+  const total = transportationCost + hotelCost + otherTravelCost;
+  document.getElementById("totalTravelCost").value = total ? String(total) : "";
+}
+
 function formatDate(value) {
   if (!value) return "";
   return value;
@@ -677,6 +780,20 @@ function populateGoodsEventSelect() {
 
   document.getElementById("goodsEventId").innerHTML = `<option value="">イベント未紐付け</option>${options.join("")}`;
   document.getElementById("goodsEventId").value = events.some((event) => event.id === currentValue) ? currentValue : "";
+}
+
+function populateTravelEventSelect() {
+  const currentValue = document.getElementById("travelEventId").value;
+  const options = events
+    .slice()
+    .sort((a, b) => (a.eventDate || "9999-12-31").localeCompare(b.eventDate || "9999-12-31"))
+    .map((event) => {
+      const label = [event.eventDate, event.groupName, event.eventTitle, event.venue].filter(Boolean).join(" / ");
+      return `<option value="${escapeAttribute(event.id)}">${escapeHtml(label)}</option>`;
+    });
+
+  document.getElementById("travelEventId").innerHTML = `<option value="">イベント未紐付け</option>${options.join("")}`;
+  document.getElementById("travelEventId").value = events.some((event) => event.id === currentValue) ? currentValue : "";
 }
 
 function hasSuppressedParticipationStatus(eventId) {
@@ -959,6 +1076,45 @@ function getFilteredGoods() {
     });
 }
 
+function getFilteredTravels() {
+  const keyword = travelSearchInput.value.trim().toLowerCase();
+  const selectedBookingStatus = travelBookingStatusFilter.value;
+  const selectedMcyStatus = travelMcyStatusFilter.value;
+
+  return travels
+    .map((travel) => {
+      const event = getEventById(travel.eventId);
+      return { ...travel, event };
+    })
+    .filter((travel) => {
+      const text = [
+        travel.travelId,
+        travel.event?.eventDate,
+        travel.event?.eventTitle,
+        travel.event?.venue,
+        travel.departureDate,
+        travel.returnDate,
+        travel.transportationType,
+        travel.departurePlace,
+        travel.arrivalPlace,
+        travel.hotelName,
+        travel.paymentMethod,
+        travel.travelMemo
+      ].join(" ").toLowerCase();
+
+      const matchesKeyword = !keyword || text.includes(keyword);
+      const matchesBookingStatus = !selectedBookingStatus || travel.bookingStatus === selectedBookingStatus;
+      const matchesMcyStatus = !selectedMcyStatus || travel.mcyExportStatus === selectedMcyStatus;
+
+      return matchesKeyword && matchesBookingStatus && matchesMcyStatus;
+    })
+    .sort((a, b) => {
+      const dateA = a.departureDate || a.event?.eventDate || "9999-12-31";
+      const dateB = b.departureDate || b.event?.eventDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
 function renderEvents() {
   const filtered = getFilteredEvents();
 
@@ -1132,6 +1288,53 @@ function renderGoods() {
   goodsTotal.textContent = yen(totalAmount);
 }
 
+function renderTravels() {
+  const filtered = getFilteredTravels();
+
+  travelTableBody.innerHTML = "";
+
+  if (filtered.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="16">遠征情報はありません。</td>`;
+    travelTableBody.appendChild(row);
+  } else {
+    filtered.forEach((travel) => {
+      const event = travel.event;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${escapeHtml(travel.travelId)}</td>
+        <td>${event ? renderTravelEventCell(event) : "未紐付け"}</td>
+        <td>${escapeHtml(event?.eventDate || "")}</td>
+        <td>${escapeHtml(event?.venue || "")}</td>
+        <td>${escapeHtml(travel.departureDate || "")}</td>
+        <td>${escapeHtml(travel.returnDate || "")}</td>
+        <td>${escapeHtml(travel.transportationType || "")}</td>
+        <td class="money">${yen(travel.transportationCost)}</td>
+        <td>${escapeHtml(travel.hotelName || "")}</td>
+        <td class="money">${yen(travel.hotelCost)}</td>
+        <td class="money">${yen(travel.otherTravelCost)}</td>
+        <td class="money">${yen(travel.totalTravelCost)}</td>
+        <td>${escapeHtml(travel.paymentMethod || "")}</td>
+        <td><span class="status status-${escapeHtml(travel.bookingStatus)}">${escapeHtml(travel.bookingStatus || "")}</span></td>
+        <td><span class="status status-${escapeHtml(travel.mcyExportStatus)}">${escapeHtml(travel.mcyExportStatus || "")}</span></td>
+        <td>
+          <div class="action-buttons">
+            <button class="small-button" data-action="edit-travel" data-id="${escapeAttribute(travel.travelId)}">編集</button>
+            <button class="small-button" data-action="delete-travel" data-id="${escapeAttribute(travel.travelId)}">削除</button>
+          </div>
+        </td>
+      `;
+
+      travelTableBody.appendChild(row);
+    });
+  }
+
+  const totalAmount = filtered.reduce((sum, travel) => sum + getTravelTotal(travel), 0);
+  travelCount.textContent = String(filtered.length);
+  travelTotal.textContent = yen(totalAmount);
+}
+
 function renderTitleCell(event) {
   const title = escapeHtml(event.eventTitle);
   if (!event.sourceUrl) return title;
@@ -1142,6 +1345,10 @@ function renderTitleCell(event) {
 function renderGoodsEventCell(event) {
   const dateText = event.eventDate ? `${escapeHtml(event.eventDate)} / ` : "";
   return `${dateText}${renderTitleCell(event)}`;
+}
+
+function renderTravelEventCell(event) {
+  return renderTitleCell(event);
 }
 
 function escapeHtml(value) {
@@ -1175,6 +1382,8 @@ function upsertEvent(event) {
   renderPayments();
   populateGoodsEventSelect();
   renderGoods();
+  populateTravelEventSelect();
+  renderTravels();
   renderMcyPreview();
   renderReminders();
 }
@@ -1229,6 +1438,23 @@ function upsertGoods(item) {
 
   saveGoods();
   renderGoods();
+  renderMcyPreview();
+}
+
+function upsertTravel(travel) {
+  const index = travels.findIndex((travelItem) => travelItem.travelId === travel.travelId);
+
+  if (index >= 0) {
+    travels[index] = travel;
+  } else {
+    travels.push({
+      ...travel,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveTravels();
+  renderTravels();
   renderMcyPreview();
 }
 
@@ -1325,6 +1551,10 @@ function scrollToGoodsForm() {
   goodsForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function scrollToTravelForm() {
+  travelForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function deleteEvent(id) {
   const target = events.find((event) => event.id === id);
   if (!target) return;
@@ -1344,6 +1574,8 @@ function deleteEvent(id) {
   renderPayments();
   populateGoodsEventSelect();
   renderGoods();
+  populateTravelEventSelect();
+  renderTravels();
   renderMcyPreview();
   renderReminders();
 
@@ -1413,6 +1645,25 @@ function deleteGoods(id) {
 
   if (editingGoodsId === id) {
     resetGoodsForm();
+  }
+}
+
+function deleteTravel(id) {
+  const target = travels.find((travel) => travel.travelId === id);
+  if (!target) return;
+
+  const event = getEventById(target.eventId);
+  const title = event?.eventTitle || target.hotelName || target.transportationType || target.travelId;
+  const ok = confirm(`遠征情報を削除しますか？\n${title}`);
+  if (!ok) return;
+
+  travels = travels.filter((travel) => travel.travelId !== id);
+  saveTravels();
+  renderTravels();
+  renderMcyPreview();
+
+  if (editingTravelId === id) {
+    resetTravelForm();
   }
 }
 
@@ -1488,6 +1739,31 @@ function getMcyExportGoods() {
     });
 }
 
+function getMcyExportTravels() {
+  const target = mcyExportTarget.value;
+
+  return travels
+    .map((travel) => {
+      const event = getEventById(travel.eventId);
+      return { ...travel, event };
+    })
+    .filter((travel) => {
+      if (travel.mcyExportStatus === "対象外") return false;
+      if (!getTravelTotal(travel)) return false;
+
+      if (target === "unexported-paid" || target === "unexported-all") {
+        return travel.mcyExportStatus === "未連携";
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = a.paymentDate || a.departureDate || "9999-12-31";
+      const dateB = b.paymentDate || b.departureDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
 function buildMcyPaymentRows() {
   return getMcyExportPayments().map((payment) => {
     const event = payment.event;
@@ -1535,8 +1811,46 @@ function buildMcyGoodsRows() {
   });
 }
 
+function buildMcyTravelRows() {
+  return getMcyExportTravels().map((travel) => {
+    const event = travel.event;
+    const eventText = event?.eventTitle ? `関連イベント:${event.eventTitle}` : "";
+    const eventDateText = event?.eventDate ? `公演日:${event.eventDate}` : "";
+    const venueText = event?.venue ? `会場:${event.venue}` : "";
+    const departureText = travel.departureDate ? `出発日:${travel.departureDate}` : "";
+    const returnText = travel.returnDate ? `帰宅日:${travel.returnDate}` : "";
+    const routeText = [travel.departurePlace, travel.arrivalPlace].filter(Boolean).join("->");
+    const routeMemo = routeText ? `区間:${routeText}` : "";
+    const transportationText = travel.transportationType ? `交通手段:${travel.transportationType}` : "";
+    const hotelText = travel.hotelName ? `宿泊先:${travel.hotelName}` : "";
+    const memoParts = [
+      departureText,
+      returnText,
+      transportationText,
+      routeMemo,
+      hotelText,
+      eventText,
+      eventDateText,
+      venueText,
+      travel.travelMemo
+    ].filter(Boolean);
+
+    return {
+      date: travel.paymentDate || travel.departureDate || "",
+      majorCategory: "趣味",
+      middleCategory: getMcyTravelMiddleCategory(travel),
+      description: buildMcyTravelDescription(travel, event),
+      amount: getTravelTotal(travel),
+      paymentMethod: travel.paymentMethod || "",
+      source: "SUPER HELLO",
+      sourceId: travel.travelId,
+      note: memoParts.join(" / ")
+    };
+  });
+}
+
 function buildMcyRows() {
-  return [...buildMcyPaymentRows(), ...buildMcyGoodsRows()].sort((a, b) => {
+  return [...buildMcyPaymentRows(), ...buildMcyGoodsRows(), ...buildMcyTravelRows()].sort((a, b) => {
     const dateCompare = (a.date || "9999-12-31").localeCompare(b.date || "9999-12-31");
     if (dateCompare !== 0) return dateCompare;
     return String(a.sourceId).localeCompare(String(b.sourceId));
@@ -1553,6 +1867,22 @@ function buildMcyDescription(payment, event) {
 
 function buildMcyGoodsDescription(item) {
   return [item.groupName, item.memberName, item.itemName, "グッズ代"].filter(Boolean).join(" ");
+}
+
+function getMcyTravelMiddleCategory(travel) {
+  const hasTransportation = Number(travel.transportationCost || 0) > 0;
+  const hasHotel = Number(travel.hotelCost || 0) > 0;
+  const hasOther = Number(travel.otherTravelCost || 0) > 0;
+
+  if (hasTransportation && !hasHotel && !hasOther) return "交通費";
+  if (hasHotel && !hasTransportation && !hasOther) return "宿泊費";
+  return "遠征費";
+}
+
+function buildMcyTravelDescription(travel, event) {
+  const eventTitle = event?.eventTitle || "イベント未紐付け";
+  const travelName = [travel.transportationType, travel.hotelName].filter(Boolean).join(" / ");
+  return [eventTitle, travelName, "遠征費"].filter(Boolean).join(" ");
 }
 
 function renderMcyPreview() {
@@ -1675,7 +2005,8 @@ function recordMcyExportLog(format, rows) {
 function markDisplayedMcyRowsAsExported() {
   const targetPayments = getMcyExportPayments();
   const targetGoods = getMcyExportGoods();
-  const targetCount = targetPayments.length + targetGoods.length;
+  const targetTravels = getMcyExportTravels();
+  const targetCount = targetPayments.length + targetGoods.length + targetTravels.length;
 
   if (targetCount === 0) {
     alert("連携済にする対象がありません。");
@@ -1687,6 +2018,7 @@ function markDisplayedMcyRowsAsExported() {
 
   const targetIds = new Set(targetPayments.map((payment) => payment.id));
   const targetGoodsIds = new Set(targetGoods.map((item) => item.goodsId));
+  const targetTravelIds = new Set(targetTravels.map((travel) => travel.travelId));
 
   payments = payments.map((payment) => {
     if (!targetIds.has(payment.id)) return payment;
@@ -1708,10 +2040,22 @@ function markDisplayedMcyRowsAsExported() {
     };
   });
 
+  travels = travels.map((travel) => {
+    if (!targetTravelIds.has(travel.travelId)) return travel;
+
+    return {
+      ...travel,
+      mcyExportStatus: "連携済",
+      updatedAt: new Date().toISOString()
+    };
+  });
+
   savePayments();
   saveGoods();
+  saveTravels();
   renderPayments();
   renderGoods();
+  renderTravels();
   renderMcyPreview();
 
   alert("表示分を連携済に更新しました。");
@@ -1795,6 +2139,15 @@ goodsForm.addEventListener("submit", (event) => {
   resetGoodsForm();
 });
 
+travelForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const formData = getTravelFormData();
+
+  upsertTravel(formData);
+  resetTravelForm();
+});
+
 resetButton.addEventListener("click", () => {
   resetForm();
 });
@@ -1811,9 +2164,18 @@ resetGoodsButton.addEventListener("click", () => {
   resetGoodsForm();
 });
 
+resetTravelButton.addEventListener("click", () => {
+  resetTravelForm();
+});
+
 newGoodsButton.addEventListener("click", () => {
   resetGoodsForm();
   scrollToGoodsForm();
+});
+
+newTravelButton.addEventListener("click", () => {
+  resetTravelForm();
+  scrollToTravelForm();
 });
 
 searchInput.addEventListener("input", () => {
@@ -1852,6 +2214,18 @@ goodsMcyStatusFilter.addEventListener("change", () => {
   renderGoods();
 });
 
+travelSearchInput.addEventListener("input", () => {
+  renderTravels();
+});
+
+travelBookingStatusFilter.addEventListener("change", () => {
+  renderTravels();
+});
+
+travelMcyStatusFilter.addEventListener("change", () => {
+  renderTravels();
+});
+
 document.getElementById("goodsQuantity").addEventListener("input", () => {
   syncGoodsTotalAmount();
 });
@@ -1865,6 +2239,12 @@ document.getElementById("goodsEventId").addEventListener("change", () => {
   if (event?.groupName) {
     document.getElementById("goodsGroupName").value = event.groupName;
   }
+});
+
+["transportationCost", "hotelCost", "otherTravelCost"].forEach((elementId) => {
+  document.getElementById(elementId).addEventListener("input", () => {
+    syncTravelTotalAmount();
+  });
 });
 
 reminderTargetFilter.addEventListener("change", () => {
@@ -1960,6 +2340,26 @@ goodsTableBody.addEventListener("click", (event) => {
   }
 });
 
+travelTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (action === "edit-travel") {
+    const target = travels.find((item) => item.travelId === id);
+    if (target) {
+      setTravelFormData(target);
+      scrollToTravelForm();
+    }
+  }
+
+  if (action === "delete-travel") {
+    deleteTravel(id);
+  }
+});
+
 reminderTableBody.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -2005,6 +2405,10 @@ exportGoodsJsonButton.addEventListener("click", () => {
   exportJson("super-hello-goods", goods);
 });
 
+exportTravelJsonButton.addEventListener("click", () => {
+  exportJson("super-hello-travels", travels);
+});
+
 mcyExportTarget.addEventListener("change", () => {
   renderMcyPreview();
 });
@@ -2035,6 +2439,8 @@ clearAllButton.addEventListener("click", () => {
   renderPayments();
   populateGoodsEventSelect();
   renderGoods();
+  populateTravelEventSelect();
+  renderTravels();
   renderMcyPreview();
   renderReminders();
 });
@@ -2081,17 +2487,34 @@ clearGoodsButton.addEventListener("click", () => {
   renderMcyPreview();
 });
 
+clearTravelButton.addEventListener("click", () => {
+  if (travels.length === 0) return;
+
+  const ok = confirm("遠征情報をすべて削除します。\nイベント候補・参加予定・支払い情報・グッズ情報は削除されません。\nよろしいですか？");
+  if (!ok) return;
+
+  travels = [];
+  saveTravels();
+  resetTravelForm();
+  renderTravels();
+  renderMcyPreview();
+});
+
 loadEvents();
 loadParticipations();
 loadPayments();
 loadMcyExportLogs();
 loadGoods();
+loadTravels();
 
 populateGoodsEventSelect();
+populateTravelEventSelect();
 resetGoodsForm();
+resetTravelForm();
 renderEvents();
 renderParticipations();
 renderPayments();
 renderGoods();
+renderTravels();
 renderMcyPreview();
 renderReminders();

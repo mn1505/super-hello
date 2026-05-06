@@ -9,7 +9,7 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.7</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.8</div>
   </header>
 
   <nav class="top-menu">
@@ -17,6 +17,7 @@
     <button class="menu-button active">参加予定</button>
     <button class="menu-button active">支払い</button>
     <button class="menu-button active">グッズ</button>
+    <button class="menu-button active">遠征</button>
     <button class="menu-button active">MCY連携</button>
     <button class="menu-button active">期限管理</button>
     <button class="menu-button" disabled>集計</button>
@@ -659,6 +660,213 @@
         <div class="form-actions">
           <button type="submit" class="primary-button">グッズを登録</button>
           <button type="button" id="resetGoodsButton">グッズ入力クリア</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">遠征管理</div>
+
+      <div class="toolbar">
+        <label>
+          遠征検索
+          <input type="text" id="travelSearchInput" placeholder="イベント名・会場・交通手段・宿泊先で検索" />
+        </label>
+
+        <label>
+          予約状態
+          <select id="travelBookingStatusFilter">
+            <option value="">すべて</option>
+            <option value="未予約">未予約</option>
+            <option value="予約予定">予約予定</option>
+            <option value="予約済">予約済</option>
+            <option value="支払済">支払済</option>
+            <option value="キャンセル">キャンセル</option>
+            <option value="利用済">利用済</option>
+          </select>
+        </label>
+
+        <label>
+          MCY連携状態
+          <select id="travelMcyStatusFilter">
+            <option value="">すべて</option>
+            <option value="未連携">未連携</option>
+            <option value="連携済">連携済</option>
+            <option value="対象外">対象外</option>
+          </select>
+        </label>
+
+        <button type="button" id="newTravelButton" class="primary-button">遠征新規登録</button>
+        <button type="button" id="exportTravelJsonButton">遠征JSON出力</button>
+        <button type="button" id="clearTravelButton" class="danger-button">遠征全削除</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table travel-table">
+          <thead>
+            <tr>
+              <th>遠征ID</th>
+              <th>関連イベント</th>
+              <th>開催日</th>
+              <th>会場</th>
+              <th>出発日</th>
+              <th>帰宅日</th>
+              <th>交通手段</th>
+              <th>交通費</th>
+              <th>宿泊先</th>
+              <th>宿泊費</th>
+              <th>その他費用</th>
+              <th>合計</th>
+              <th>支払方法</th>
+              <th>予約状態</th>
+              <th>MCY連携状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="travelTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        遠征表示件数：<span id="travelCount">0</span> 件 /
+        表示合計：<span id="travelTotal">0</span> 円
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">遠征 編集</div>
+
+      <form id="travelForm" class="event-form">
+        <div class="form-grid">
+          <label>
+            遠征ID
+            <input type="text" id="travelId" readonly />
+          </label>
+
+          <label class="wide">
+            関連イベント
+            <select id="travelEventId">
+              <option value="">イベント未紐付け</option>
+            </select>
+          </label>
+
+          <label>
+            出発日
+            <input type="date" id="departureDate" />
+          </label>
+
+          <label>
+            帰宅日
+            <input type="date" id="returnDate" />
+          </label>
+
+          <label>
+            交通手段
+            <select id="transportationType">
+              <option value="">未定</option>
+              <option value="新幹線">新幹線</option>
+              <option value="飛行機">飛行機</option>
+              <option value="高速バス">高速バス</option>
+              <option value="在来線">在来線</option>
+              <option value="車">車</option>
+              <option value="徒歩">徒歩</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            出発地
+            <input type="text" id="departurePlace" placeholder="例：東京" />
+          </label>
+
+          <label>
+            到着地
+            <input type="text" id="arrivalPlace" placeholder="例：大阪" />
+          </label>
+
+          <label>
+            交通費
+            <input type="number" id="transportationCost" min="0" step="1" />
+          </label>
+
+          <label>
+            宿泊先
+            <input type="text" id="hotelName" placeholder="例：ホテル名" />
+          </label>
+
+          <label>
+            チェックイン日
+            <input type="date" id="checkInDate" />
+          </label>
+
+          <label>
+            チェックアウト日
+            <input type="date" id="checkOutDate" />
+          </label>
+
+          <label>
+            宿泊費
+            <input type="number" id="hotelCost" min="0" step="1" />
+          </label>
+
+          <label>
+            その他費用
+            <input type="number" id="otherTravelCost" min="0" step="1" />
+          </label>
+
+          <label>
+            合計金額
+            <input type="number" id="totalTravelCost" min="0" step="1" />
+          </label>
+
+          <label>
+            支払日
+            <input type="date" id="travelPaymentDate" />
+          </label>
+
+          <label>
+            支払方法
+            <select id="travelPaymentMethod">
+              <option value="">未定</option>
+              <option value="クレカ">クレカ</option>
+              <option value="現金">現金</option>
+              <option value="電子マネー">電子マネー</option>
+              <option value="PayPay">PayPay</option>
+              <option value="銀行振込">銀行振込</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            予約状態
+            <select id="bookingStatus">
+              <option value="未予約">未予約</option>
+              <option value="予約予定">予約予定</option>
+              <option value="予約済">予約済</option>
+              <option value="支払済">支払済</option>
+              <option value="キャンセル">キャンセル</option>
+              <option value="利用済">利用済</option>
+            </select>
+          </label>
+
+          <label>
+            MCY連携状態
+            <select id="travelMcyExportStatus">
+              <option value="未連携">未連携</option>
+              <option value="連携済">連携済</option>
+              <option value="対象外">対象外</option>
+            </select>
+          </label>
+
+          <label class="wide">
+            メモ
+            <textarea id="travelMemo" rows="3" placeholder="予約番号、移動メモ、ロッカー代、現地交通費など"></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button">遠征を登録</button>
+          <button type="button" id="resetTravelButton">遠征入力クリア</button>
         </div>
       </form>
     </section>
