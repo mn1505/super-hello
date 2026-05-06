@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SUPER HELLO - イベント候補管理</title>
+  <title>SUPER HELLO - イベント管理</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.1</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.2</div>
   </header>
 
   <nav class="top-menu">
     <button class="menu-button active">イベント候補</button>
-    <button class="menu-button" disabled>参加予定</button>
+    <button class="menu-button active">参加予定</button>
     <button class="menu-button" disabled>支払い</button>
     <button class="menu-button" disabled>MCY連携</button>
     <button class="menu-button" disabled>集計</button>
@@ -149,8 +149,8 @@
           </select>
         </label>
 
-        <button type="button" id="exportJsonButton">JSON出力</button>
-        <button type="button" id="clearAllButton" class="danger-button">全削除</button>
+        <button type="button" id="exportJsonButton">イベントJSON出力</button>
+        <button type="button" id="clearAllButton" class="danger-button">イベント全削除</button>
       </div>
 
       <div class="table-wrapper">
@@ -174,8 +174,150 @@
       </div>
 
       <div class="summary-line">
-        登録件数：<span id="eventCount">0</span> 件
+        イベント登録件数：<span id="eventCount">0</span> 件
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">参加予定・申込管理</div>
+
+      <div class="toolbar">
+        <label>
+          参加予定検索
+          <input type="text" id="participationSearchInput" placeholder="イベント名・会場・同行者で検索" />
+        </label>
+
+        <label>
+          参加状態
+          <select id="participationStatusFilter">
+            <option value="">すべて</option>
+            <option value="検討中">検討中</option>
+            <option value="申込予定">申込予定</option>
+            <option value="申込済">申込済</option>
+            <option value="当選">当選</option>
+            <option value="落選">落選</option>
+            <option value="入金済">入金済</option>
+            <option value="発券済">発券済</option>
+            <option value="参加済">参加済</option>
+            <option value="見送り">見送り</option>
+          </select>
+        </label>
+
+        <button type="button" id="exportParticipationJsonButton">参加予定JSON出力</button>
+        <button type="button" id="clearParticipationButton" class="danger-button">参加予定全削除</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table participation-table">
+          <thead>
+            <tr>
+              <th>参加ID</th>
+              <th>開催日</th>
+              <th>開演</th>
+              <th>グループ</th>
+              <th>イベント名</th>
+              <th>会場</th>
+              <th>参加状態</th>
+              <th>枚数</th>
+              <th>席種</th>
+              <th>購入元</th>
+              <th>同行者</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="participationTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        参加予定件数：<span id="participationCount">0</span> 件
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">参加予定 編集</div>
+
+      <form id="participationForm" class="event-form">
+        <div class="form-grid">
+          <label>
+            参加ID
+            <input type="text" id="participationId" readonly />
+          </label>
+
+          <label>
+            イベントID
+            <input type="text" id="participationEventId" readonly />
+          </label>
+
+          <label>
+            参加状態
+            <select id="participationStatus">
+              <option value="検討中">検討中</option>
+              <option value="申込予定">申込予定</option>
+              <option value="申込済">申込済</option>
+              <option value="当選">当選</option>
+              <option value="落選">落選</option>
+              <option value="入金済">入金済</option>
+              <option value="発券済">発券済</option>
+              <option value="参加済">参加済</option>
+              <option value="見送り">見送り</option>
+            </select>
+          </label>
+
+          <label>
+            枚数
+            <input type="number" id="ticketCount" min="1" step="1" />
+          </label>
+
+          <label>
+            席種
+            <select id="seatType">
+              <option value="">未定</option>
+              <option value="一般席">一般席</option>
+              <option value="ファミリー席">ファミリー席</option>
+              <option value="女性専用席">女性専用席</option>
+              <option value="指定席">指定席</option>
+              <option value="着席指定">着席指定</option>
+              <option value="スタンディング">スタンディング</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            購入元
+            <select id="ticketSource">
+              <option value="">未定</option>
+              <option value="FC">FC</option>
+              <option value="ぴあ">ぴあ</option>
+              <option value="ローチケ">ローチケ</option>
+              <option value="e+">e+</option>
+              <option value="当日券">当日券</option>
+              <option value="譲渡">譲渡</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            同行者
+            <input type="text" id="companion" placeholder="任意" />
+          </label>
+
+          <label>
+            申込日
+            <input type="date" id="applicationDate" />
+          </label>
+
+          <label class="wide">
+            参加メモ
+            <textarea id="participationMemo" rows="3" placeholder="申込番号、昼夜、注意事項など"></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button">参加予定を更新</button>
+          <button type="button" id="resetParticipationButton">参加編集クリア</button>
+        </div>
+      </form>
     </section>
   </main>
 

@@ -278,3 +278,28 @@ button:hover {
     width: 100%;
   }
 }
+
+.participation-table {
+  min-width: 1350px;
+}
+
+input[readonly] {
+  background: #e9e9e9;
+  color: #555;
+}
+
+.status-検討中 {
+  background: #eeeeee;
+}
+
+.status-入金済 {
+  background: #e6d9ff;
+}
+
+.status-発券済 {
+  background: #fff0cc;
+}
+
+.status-参加済 {
+  background: #d9ead3;
+}
