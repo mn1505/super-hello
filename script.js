@@ -52,6 +52,10 @@ const markMcyExportedButton = document.getElementById("markMcyExportedButton");
 const mcyPreviewTableBody = document.getElementById("mcyPreviewTableBody");
 const mcyPreviewCount = document.getElementById("mcyPreviewCount");
 const mcyPreviewTotal = document.getElementById("mcyPreviewTotal");
+const reminderTargetFilter = document.getElementById("reminderTargetFilter");
+const reminderTypeFilter = document.getElementById("reminderTypeFilter");
+const reminderTableBody = document.getElementById("reminderTableBody");
+const reminderCount = document.getElementById("reminderCount");
 
 function loadEvents() {
   const raw = localStorage.getItem(EVENT_STORAGE_KEY);
@@ -527,6 +531,200 @@ function formatDate(value) {
   return value;
 }
 
+function parseLocalDate(value) {
+  if (!value) return null;
+  const parts = String(value).split("-").map(Number);
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function getTodayDateOnly() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function getDaysUntil(dateValue) {
+  const target = parseLocalDate(dateValue);
+  if (!target) return null;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Math.round((target.getTime() - getTodayDateOnly().getTime()) / dayMs);
+}
+
+function getPriority(daysUntil) {
+  if (daysUntil < 0) return "期限切れ";
+  if (daysUntil === 0) return "今日";
+  if (daysUntil <= 3) return "3日以内";
+  if (daysUntil <= 7) return "7日以内";
+  if (daysUntil <= 30) return "30日以内";
+  return "通常";
+}
+
+function formatDaysUntil(daysUntil) {
+  if (daysUntil < 0) return `${Math.abs(daysUntil)}日超過`;
+  if (daysUntil === 0) return "今日";
+  return `あと${daysUntil}日`;
+}
+
+function getParticipationsByEventId(eventId) {
+  return participations.filter((participation) => participation.eventId === eventId);
+}
+
+function getPaymentsByEventId(eventId) {
+  const participationIds = new Set(getParticipationsByEventId(eventId).map((participation) => participation.id));
+  return payments.filter((payment) => participationIds.has(payment.participationId));
+}
+
+function hasSuppressedParticipationStatus(eventId) {
+  return getParticipationsByEventId(eventId).some((participation) =>
+    ["参加済", "見送り", "落選"].includes(participation.participationStatus)
+  );
+}
+
+function buildReminderStatus(event, participation, payment) {
+  const statuses = [];
+  if (event?.status) statuses.push(`イベント:${event.status}`);
+  if (participation?.participationStatus) statuses.push(`参加:${participation.participationStatus}`);
+  if (payment?.paymentStatus) statuses.push(`支払い:${payment.paymentStatus}`);
+  return statuses.join(" / ");
+}
+
+function isEventReminderComplete(type, event) {
+  if (type === "申込締切") return ["申込済", "当選", "落選", "見送り"].includes(event.status);
+  if (type === "当落発表") return ["当選", "落選", "見送り"].includes(event.status);
+  if (type === "支払期限") {
+    const eventPayments = getPaymentsByEventId(event.id);
+    return ["落選", "見送り"].includes(event.status) || eventPayments.some((payment) => payment.paymentStatus === "支払済");
+  }
+  if (type === "公演日") return event.eventDate && getDaysUntil(event.eventDate) < 0;
+  return false;
+}
+
+function addReminder(rows, type, dateValue, event, participation, payment, complete) {
+  if (!dateValue || !event) return;
+
+  const daysUntil = getDaysUntil(dateValue);
+  if (daysUntil === null) return;
+
+  rows.push({
+    type,
+    date: dateValue,
+    daysUntil,
+    priority: getPriority(daysUntil),
+    groupName: event.groupName || "",
+    eventTitle: event.eventTitle || "",
+    venue: event.venue || "",
+    statusText: buildReminderStatus(event, participation, payment),
+    eventId: event.id,
+    participationId: participation?.id || "",
+    paymentId: payment?.id || "",
+    complete
+  });
+}
+
+function buildReminderRows() {
+  const rows = [];
+
+  events.forEach((event) => {
+    const relatedParticipations = getParticipationsByEventId(event.id);
+    const primaryParticipation = relatedParticipations[0] || null;
+    const suppressed = hasSuppressedParticipationStatus(event.id);
+    const hasPaymentDeadlinePayment = getPaymentsByEventId(event.id).some((payment) => payment.paymentStatus === "未払い");
+
+    if (!suppressed) {
+      addReminder(rows, "申込締切", event.applicationDeadline, event, primaryParticipation, null, isEventReminderComplete("申込締切", event));
+      addReminder(rows, "当落発表", event.lotteryDate, event, primaryParticipation, null, isEventReminderComplete("当落発表", event));
+
+      if (!hasPaymentDeadlinePayment) {
+        addReminder(rows, "支払期限", event.paymentDeadline, event, primaryParticipation, null, isEventReminderComplete("支払期限", event));
+      }
+    }
+
+    addReminder(rows, "公演日", event.eventDate, event, primaryParticipation, null, isEventReminderComplete("公演日", event));
+  });
+
+  payments.forEach((payment) => {
+    if (payment.paymentStatus !== "未払い") return;
+
+    const participation = getParticipationById(payment.participationId);
+    const event = participation ? getEventById(participation.eventId) : null;
+    if (!event || !event.paymentDeadline) return;
+    if (["参加済", "見送り", "落選"].includes(participation.participationStatus)) return;
+
+    addReminder(rows, "支払期限", event.paymentDeadline, event, participation, payment, false);
+  });
+
+  return rows.sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return a.type.localeCompare(b.type);
+  });
+}
+
+function getFilteredReminderRows() {
+  const target = reminderTargetFilter.value;
+  const type = reminderTypeFilter.value;
+
+  return buildReminderRows().filter((row) => {
+    const matchesType = !type || row.type === type;
+    if (!matchesType) return false;
+
+    if (target === "expired") return row.daysUntil < 0;
+    if (target === "today") return row.daysUntil === 0;
+    if (target === "within7") return row.daysUntil >= 0 && row.daysUntil <= 7;
+    if (target === "within30") return row.daysUntil >= 0 && row.daysUntil <= 30;
+    if (target === "incomplete") return !row.complete;
+    return true;
+  });
+}
+
+function renderReminderActions(row) {
+  const buttons = [`<button class="small-button" data-action="edit-event" data-id="${escapeAttribute(row.eventId)}">イベント編集</button>`];
+
+  if (row.participationId) {
+    buttons.push(`<button class="small-button" data-action="edit-participation" data-id="${escapeAttribute(row.participationId)}">参加編集</button>`);
+  }
+
+  if (row.paymentId) {
+    buttons.push(`<button class="small-button" data-action="edit-payment" data-id="${escapeAttribute(row.paymentId)}">支払い編集</button>`);
+  }
+
+  return `<div class="action-buttons">${buttons.join("")}</div>`;
+}
+
+function renderReminders() {
+  const rows = getFilteredReminderRows();
+
+  reminderTableBody.innerHTML = "";
+
+  if (rows.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="9">期限表示対象はありません。</td>`;
+    reminderTableBody.appendChild(row);
+  } else {
+    rows.forEach((rowData) => {
+      const row = document.createElement("tr");
+      row.className = `reminder-priority-${rowData.priority}`;
+
+      row.innerHTML = `
+        <td>${escapeHtml(rowData.type)}</td>
+        <td>${escapeHtml(formatDate(rowData.date))}</td>
+        <td>${escapeHtml(formatDaysUntil(rowData.daysUntil))}</td>
+        <td>${escapeHtml(rowData.groupName)}</td>
+        <td>${escapeHtml(rowData.eventTitle)}</td>
+        <td>${escapeHtml(rowData.venue)}</td>
+        <td>${escapeHtml(rowData.statusText)}</td>
+        <td>${escapeHtml(rowData.priority)}</td>
+        <td>${renderReminderActions(rowData)}</td>
+      `;
+
+      reminderTableBody.appendChild(row);
+    });
+  }
+
+  reminderCount.textContent = String(rows.length);
+}
+
 function getFilteredEvents() {
   const keyword = searchInput.value.trim().toLowerCase();
   const selectedStatus = statusFilter.value;
@@ -783,6 +981,7 @@ function upsertEvent(event) {
   renderEvents();
   renderParticipations();
   renderPayments();
+  renderReminders();
 }
 
 function upsertParticipation(participation) {
@@ -800,6 +999,7 @@ function upsertParticipation(participation) {
   saveParticipations();
   renderParticipations();
   renderPayments();
+  renderReminders();
 }
 
 function upsertPayment(payment) {
@@ -817,6 +1017,7 @@ function upsertPayment(payment) {
   savePayments(); 
   renderPayments();
   renderMcyPreview();
+  renderReminders();
 }
 
 function addParticipationFromEvent(eventId) {
@@ -850,6 +1051,7 @@ function addParticipationFromEvent(eventId) {
   participations.push(participation);
   saveParticipations();
   renderParticipations();
+  renderReminders();
   setParticipationFormData(participation);
   scrollToParticipationForm();
 
@@ -892,6 +1094,7 @@ function addPaymentFromParticipation(participationId) {
   payments.push(payment);
   savePayments();
   renderPayments();
+  renderReminders();
   setPaymentFormData(payment);
   scrollToPaymentForm();
 
@@ -923,6 +1126,7 @@ function deleteEvent(id) {
   renderEvents();
   renderParticipations();
   renderPayments();
+  renderReminders();
 
   if (editingId === id) {
     resetForm();
@@ -948,6 +1152,7 @@ function deleteParticipation(id) {
   saveParticipations();
   renderParticipations();
   renderPayments();
+  renderReminders();
 
   if (editingParticipationId === id) {
     resetParticipationForm();
@@ -968,6 +1173,7 @@ function deletePayment(id) {
   savePayments();
   renderPayments();
   renderMcyPreview();
+  renderReminders();
 
   if (editingPaymentId === id) {
     resetPaymentForm();
@@ -1300,6 +1506,14 @@ paymentStatusFilter.addEventListener("change", () => {
   renderPayments();
 });
 
+reminderTargetFilter.addEventListener("change", () => {
+  renderReminders();
+});
+
+reminderTypeFilter.addEventListener("change", () => {
+  renderReminders();
+});
+
 eventTableBody.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -1365,6 +1579,35 @@ paymentTableBody.addEventListener("click", (event) => {
   }
 });
 
+reminderTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (action === "edit-event") {
+    const target = events.find((item) => item.id === id);
+    if (target) setFormData(target);
+  }
+
+  if (action === "edit-participation") {
+    const target = participations.find((item) => item.id === id);
+    if (target) {
+      setParticipationFormData(target);
+      scrollToParticipationForm();
+    }
+  }
+
+  if (action === "edit-payment") {
+    const target = payments.find((item) => item.id === id);
+    if (target) {
+      setPaymentFormData(target);
+      scrollToPaymentForm();
+    }
+  }
+});
+
 exportJsonButton.addEventListener("click", () => {
   exportJson("super-hello-events", events);
 });
@@ -1405,6 +1648,7 @@ clearAllButton.addEventListener("click", () => {
   renderEvents();
   renderParticipations();
   renderPayments();
+  renderReminders();
 });
 
 clearParticipationButton.addEventListener("click", () => {
@@ -1418,6 +1662,7 @@ clearParticipationButton.addEventListener("click", () => {
   resetParticipationForm();
   renderParticipations();
   renderPayments();
+  renderReminders();
 });
 
 clearPaymentButton.addEventListener("click", () => {
@@ -1431,6 +1676,7 @@ clearPaymentButton.addEventListener("click", () => {
   resetPaymentForm();
   renderPayments();
   renderMcyPreview();
+  renderReminders();
 });
 
 loadEvents();
@@ -1442,3 +1688,4 @@ renderEvents();
 renderParticipations();
 renderPayments();
 renderMcyPreview();
+renderReminders();

@@ -350,6 +350,34 @@ input[readonly] {
   min-width: 1500px;
 }
 
+.reminder-table {
+  min-width: 1400px;
+}
+
+.data-table tbody tr.reminder-priority-期限切れ {
+  background: #f8d7da;
+}
+
+.data-table tbody tr.reminder-priority-今日 {
+  background: #fff3cd;
+}
+
+.data-table tbody tr.reminder-priority-3日以内 {
+  background: #ffe5c2;
+}
+
+.data-table tbody tr.reminder-priority-7日以内 {
+  background: #d9edf7;
+}
+
+.data-table tbody tr.reminder-priority-30日以内 {
+  background: #eef5ff;
+}
+
+.data-table tbody tr.reminder-priority-通常 {
+  background: #fff;
+}
+
 .import-preview-table {
   min-width: 700px;
 }

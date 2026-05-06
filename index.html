@@ -9,7 +9,7 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.5</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.6</div>
   </header>
 
   <nav class="top-menu">
@@ -17,6 +17,7 @@
     <button class="menu-button active">参加予定</button>
     <button class="menu-button active">支払い</button>
     <button class="menu-button active">MCY連携</button>
+    <button class="menu-button active">期限管理</button>
     <button class="menu-button" disabled>集計</button>
   </nav>
 
@@ -211,6 +212,58 @@
 
       <div class="summary-line">
         イベント登録件数：<span id="eventCount">0</span> 件
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">期限・リマインド管理</div>
+
+      <div class="toolbar">
+        <label>
+          表示対象
+          <select id="reminderTargetFilter">
+            <option value="all">すべて</option>
+            <option value="expired">期限切れ</option>
+            <option value="today">今日</option>
+            <option value="within7">7日以内</option>
+            <option value="within30">30日以内</option>
+            <option value="incomplete">未完了のみ</option>
+          </select>
+        </label>
+
+        <label>
+          種別
+          <select id="reminderTypeFilter">
+            <option value="">すべて</option>
+            <option value="申込締切">申込締切</option>
+            <option value="当落発表">当落発表</option>
+            <option value="支払期限">支払期限</option>
+            <option value="公演日">公演日</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table reminder-table">
+          <thead>
+            <tr>
+              <th>種別</th>
+              <th>対象日</th>
+              <th>残り日数</th>
+              <th>グループ</th>
+              <th>イベント名</th>
+              <th>会場</th>
+              <th>関連状態</th>
+              <th>優先度</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="reminderTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        期限表示件数：<span id="reminderCount">0</span> 件
       </div>
     </section>
 
