@@ -303,3 +303,41 @@ input[readonly] {
 .status-参加済 {
   background: #d9ead3;
 }
+
+.payment-table {
+  min-width: 1600px;
+}
+
+.status-未払い {
+  background: #fff0cc;
+}
+
+.status-支払済 {
+  background: #dff0d8;
+}
+
+.status-返金予定 {
+  background: #f2dede;
+}
+
+.status-返金済 {
+  background: #d9edf7;
+}
+
+.status-未連携 {
+  background: #fff0cc;
+}
+
+.status-連携済 {
+  background: #dff0d8;
+}
+
+.status-対象外 {
+  background: #ddd;
+  color: #555;
+}
+
+.money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -9,13 +9,13 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.2</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.3</div>
   </header>
 
   <nav class="top-menu">
     <button class="menu-button active">イベント候補</button>
     <button class="menu-button active">参加予定</button>
-    <button class="menu-button" disabled>支払い</button>
+    <button class="menu-button active">支払い</button>
     <button class="menu-button" disabled>MCY連携</button>
     <button class="menu-button" disabled>集計</button>
   </nav>
@@ -316,6 +316,160 @@
         <div class="form-actions">
           <button type="submit" class="primary-button">参加予定を更新</button>
           <button type="button" id="resetParticipationButton">参加編集クリア</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">チケット代・支払い管理</div>
+
+      <div class="toolbar">
+        <label>
+          支払い検索
+          <input type="text" id="paymentSearchInput" placeholder="イベント名・会場・支払先で検索" />
+        </label>
+
+        <label>
+          支払い状態
+          <select id="paymentStatusFilter">
+            <option value="">すべて</option>
+            <option value="未払い">未払い</option>
+            <option value="支払済">支払済</option>
+            <option value="返金予定">返金予定</option>
+            <option value="返金済">返金済</option>
+          </select>
+        </label>
+
+        <button type="button" id="exportPaymentJsonButton">支払いJSON出力</button>
+        <button type="button" id="clearPaymentButton" class="danger-button">支払い全削除</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table payment-table">
+          <thead>
+            <tr>
+              <th>支払いID</th>
+              <th>支払日</th>
+              <th>開催日</th>
+              <th>グループ</th>
+              <th>イベント名</th>
+              <th>会場</th>
+              <th>費目</th>
+              <th>チケット代</th>
+              <th>手数料</th>
+              <th>合計</th>
+              <th>支払方法</th>
+              <th>支払先</th>
+              <th>状態</th>
+              <th>MCY</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="paymentTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="summary-line">
+        支払い件数：<span id="paymentCount">0</span> 件 /
+        表示合計：<span id="paymentTotal">0</span> 円
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">支払い 編集</div>
+
+      <form id="paymentForm" class="event-form">
+        <div class="form-grid">
+          <label>
+            支払いID
+            <input type="text" id="paymentId" readonly />
+          </label>
+
+          <label>
+            参加ID
+            <input type="text" id="paymentParticipationId" readonly />
+          </label>
+
+          <label>
+            費目
+            <select id="paymentItem">
+              <option value="チケット代">チケット代</option>
+              <option value="チケット手数料">チケット手数料</option>
+              <option value="配信チケット">配信チケット</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            支払い状態
+            <select id="paymentStatus">
+              <option value="未払い">未払い</option>
+              <option value="支払済">支払済</option>
+              <option value="返金予定">返金予定</option>
+              <option value="返金済">返金済</option>
+            </select>
+          </label>
+
+          <label>
+            支払日
+            <input type="date" id="paymentDate" />
+          </label>
+
+          <label>
+            チケット代
+            <input type="number" id="ticketPrice" min="0" step="1" placeholder="例：8800" />
+          </label>
+
+          <label>
+            手数料
+            <input type="number" id="ticketFee" min="0" step="1" placeholder="例：770" />
+          </label>
+
+          <label>
+            支払方法
+            <select id="paymentMethod">
+              <option value="">未定</option>
+              <option value="クレカ">クレカ</option>
+              <option value="現金">現金</option>
+              <option value="コンビニ">コンビニ</option>
+              <option value="銀行振込">銀行振込</option>
+              <option value="電子マネー">電子マネー</option>
+              <option value="PayPay">PayPay</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            支払先
+            <select id="paymentVendor">
+              <option value="">未定</option>
+              <option value="FC">FC</option>
+              <option value="ぴあ">ぴあ</option>
+              <option value="ローチケ">ローチケ</option>
+              <option value="e+">e+</option>
+              <option value="会場">会場</option>
+              <option value="その他">その他</option>
+            </select>
+          </label>
+
+          <label>
+            MCY連携状態
+            <select id="mcyExportStatus">
+              <option value="未連携">未連携</option>
+              <option value="連携済">連携済</option>
+              <option value="対象外">対象外</option>
+            </select>
+          </label>
+
+          <label class="wide">
+            支払いメモ
+            <textarea id="paymentMemo" rows="3" placeholder="決済番号、支払期限、返金メモなど"></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button">支払いを更新</button>
+          <button type="button" id="resetPaymentButton">支払い編集クリア</button>
         </div>
       </form>
     </section>
