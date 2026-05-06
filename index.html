@@ -16,7 +16,7 @@
     <button class="menu-button active">イベント候補</button>
     <button class="menu-button active">参加予定</button>
     <button class="menu-button active">支払い</button>
-    <button class="menu-button" disabled>MCY連携</button>
+    <button class="menu-button active">MCY連携</button>
     <button class="menu-button" disabled>集計</button>
   </nav>
 
@@ -374,6 +374,60 @@
         表示合計：<span id="paymentTotal">0</span> 円
       </div>
     </section>
+
+    <section class="panel">
+  <div class="panel-title">チケット代・支払い管理</div>
+  ...
+</section>
+
+<section class="panel">
+  <div class="panel-title">MCY連携 出力</div>
+
+  <div class="toolbar">
+    <label>
+      出力対象
+      <select id="mcyExportTarget">
+        <option value="unexported-paid">未連携・支払済のみ</option>
+        <option value="unexported-all">未連携すべて</option>
+        <option value="all-paid">支払済すべて</option>
+        <option value="all">すべて</option>
+      </select>
+    </label>
+
+    <button type="button" id="exportMcyCsvButton">MCY用CSV出力</button>
+    <button type="button" id="exportMcyJsonButton">MCY用JSON出力</button>
+    <button type="button" id="markMcyExportedButton">表示分を連携済にする</button>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table mcy-table">
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>大項目</th>
+          <th>中項目</th>
+          <th>内容</th>
+          <th>金額</th>
+          <th>支払方法</th>
+          <th>連携元</th>
+          <th>参照ID</th>
+          <th>備考</th>
+        </tr>
+      </thead>
+      <tbody id="mcyPreviewTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="summary-line">
+    MCY出力対象：<span id="mcyPreviewCount">0</span> 件 /
+    出力合計：<span id="mcyPreviewTotal">0</span> 円
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-title">支払い 編集</div>
+  ...
+</section>
 
     <section class="panel">
       <div class="panel-title">支払い 編集</div>

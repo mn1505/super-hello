@@ -1,10 +1,12 @@
 const EVENT_STORAGE_KEY = "superHelloEventsV01";
 const PARTICIPATION_STORAGE_KEY = "superHelloParticipationsV02";
 const PAYMENT_STORAGE_KEY = "superHelloPaymentsV03";
+const MCY_EXPORT_LOG_STORAGE_KEY = "superHelloMcyExportLogsV04";
 
 let events = [];
 let participations = [];
 let payments = [];
+let mcyExportLogs = [];
 
 let editingId = null;
 let editingParticipationId = null;
@@ -37,6 +39,13 @@ const paymentStatusFilter = document.getElementById("paymentStatusFilter");
 const exportPaymentJsonButton = document.getElementById("exportPaymentJsonButton");
 const clearPaymentButton = document.getElementById("clearPaymentButton");
 const resetPaymentButton = document.getElementById("resetPaymentButton");
+const mcyExportTarget = document.getElementById("mcyExportTarget");
+const exportMcyCsvButton = document.getElementById("exportMcyCsvButton");
+const exportMcyJsonButton = document.getElementById("exportMcyJsonButton");
+const markMcyExportedButton = document.getElementById("markMcyExportedButton");
+const mcyPreviewTableBody = document.getElementById("mcyPreviewTableBody");
+const mcyPreviewCount = document.getElementById("mcyPreviewCount");
+const mcyPreviewTotal = document.getElementById("mcyPreviewTotal");
 
 function loadEvents() {
   const raw = localStorage.getItem(EVENT_STORAGE_KEY);
@@ -63,6 +72,15 @@ function loadPayments() {
 
 function savePayments() {
   localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(payments));
+}
+
+function loadMcyExportLogs() {
+  const raw = localStorage.getItem(MCY_EXPORT_LOG_STORAGE_KEY);
+  mcyExportLogs = raw ? JSON.parse(raw) : [];
+}
+
+function saveMcyExportLogs() {
+  localStorage.setItem(MCY_EXPORT_LOG_STORAGE_KEY, JSON.stringify(mcyExportLogs));
 }
 
 function generateId(prefix) {
@@ -519,8 +537,9 @@ function upsertPayment(payment) {
     });
   }
 
-  savePayments();
+  savePayments(); 
   renderPayments();
+  renderMcyPreview();
 }
 
 function addParticipationFromEvent(eventId) {
@@ -671,6 +690,7 @@ function deletePayment(id) {
   payments = payments.filter((payment) => payment.id !== id);
   savePayments();
   renderPayments();
+  renderMcyPreview();
 
   if (editingPaymentId === id) {
     resetPaymentForm();
@@ -689,6 +709,218 @@ function exportJson(filenamePrefix, data) {
   a.click();
 
   URL.revokeObjectURL(url);
+}
+
+function getMcyExportPayments() {
+  const target = mcyExportTarget.value;
+
+  return payments
+    .map((payment) => {
+      const participation = getParticipationById(payment.participationId);
+      const event = participation ? getEventById(participation.eventId) : null;
+      return { ...payment, participation, event };
+    })
+    .filter((payment) => {
+      if (payment.mcyExportStatus === "対象外") return false;
+
+      if (target === "unexported-paid") {
+        return payment.mcyExportStatus === "未連携" && payment.paymentStatus === "支払済";
+      }
+
+      if (target === "unexported-all") {
+        return payment.mcyExportStatus === "未連携";
+      }
+
+      if (target === "all-paid") {
+        return payment.paymentStatus === "支払済";
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = a.paymentDate || a.event?.eventDate || "9999-12-31";
+      const dateB = b.paymentDate || b.event?.eventDate || "9999-12-31";
+      return dateA.localeCompare(dateB);
+    });
+}
+
+function buildMcyRows() {
+  return getMcyExportPayments().map((payment) => {
+    const event = payment.event;
+    const total = getPaymentTotal(payment);
+
+    const eventDateText = event?.eventDate ? `公演日:${event.eventDate}` : "";
+    const venueText = event?.venue ? `会場:${event.venue}` : "";
+    const groupText = event?.groupName ? `グループ:${event.groupName}` : "";
+    const memoParts = [eventDateText, venueText, groupText, payment.paymentMemo].filter(Boolean);
+
+    return {
+      date: payment.paymentDate || "",
+      majorCategory: "趣味",
+      middleCategory: "コンサート",
+      description: buildMcyDescription(payment, event),
+      amount: total,
+      paymentMethod: payment.paymentMethod || "",
+      source: "SUPER HELLO",
+      sourceId: payment.id,
+      note: memoParts.join(" / ")
+    };
+  });
+}
+
+function buildMcyDescription(payment, event) {
+  const group = event?.groupName || "";
+  const title = event?.eventTitle || "イベント不明";
+  const item = payment.paymentItem || "チケット代";
+
+  return [group, title, item].filter(Boolean).join(" ");
+}
+
+function renderMcyPreview() {
+  const rows = buildMcyRows();
+
+  mcyPreviewTableBody.innerHTML = "";
+
+  if (rows.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="9">MCY出力対象はありません。</td>`;
+    mcyPreviewTableBody.appendChild(row);
+  } else {
+    rows.forEach((rowData) => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${escapeHtml(rowData.date)}</td>
+        <td>${escapeHtml(rowData.majorCategory)}</td>
+        <td>${escapeHtml(rowData.middleCategory)}</td>
+        <td>${escapeHtml(rowData.description)}</td>
+        <td class="money">${yen(rowData.amount)}</td>
+        <td>${escapeHtml(rowData.paymentMethod)}</td>
+        <td>${escapeHtml(rowData.source)}</td>
+        <td>${escapeHtml(rowData.sourceId)}</td>
+        <td>${escapeHtml(rowData.note)}</td>
+      `;
+
+      mcyPreviewTableBody.appendChild(row);
+    });
+  }
+
+  const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  mcyPreviewCount.textContent = String(rows.length);
+  mcyPreviewTotal.textContent = yen(total);
+}
+
+function exportMcyJson() {
+  const rows = buildMcyRows();
+
+  if (rows.length === 0) {
+    alert("MCY出力対象がありません。");
+    return;
+  }
+
+  exportJson("super-hello-mcy-export", rows);
+  recordMcyExportLog("json", rows);
+}
+
+function exportMcyCsv() {
+  const rows = buildMcyRows();
+
+  if (rows.length === 0) {
+    alert("MCY出力対象がありません。");
+    return;
+  }
+
+  const headers = [
+    "日付",
+    "大項目",
+    "中項目",
+    "内容",
+    "金額",
+    "支払方法",
+    "連携元",
+    "参照ID",
+    "備考"
+  ];
+
+  const csvRows = rows.map((row) => [
+    row.date,
+    row.majorCategory,
+    row.middleCategory,
+    row.description,
+    row.amount,
+    row.paymentMethod,
+    row.source,
+    row.sourceId,
+    row.note
+  ]);
+
+  const csvText = [headers, ...csvRows]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\n");
+
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csvText], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const today = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `super-hello-mcy-export-${today}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+  recordMcyExportLog("csv", rows);
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+  return text;
+}
+
+function recordMcyExportLog(format, rows) {
+  mcyExportLogs.push({
+    id: generateId("MX"),
+    format,
+    exportedAt: new Date().toISOString(),
+    count: rows.length,
+    total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    sourceIds: rows.map((row) => row.sourceId)
+  });
+
+  saveMcyExportLogs();
+}
+
+function markDisplayedMcyRowsAsExported() {
+  const targetPayments = getMcyExportPayments();
+
+  if (targetPayments.length === 0) {
+    alert("連携済にする対象がありません。");
+    return;
+  }
+
+  const ok = confirm(`表示中の ${targetPayments.length} 件を「連携済」に更新します。\nよろしいですか？`);
+  if (!ok) return;
+
+  const targetIds = new Set(targetPayments.map((payment) => payment.id));
+
+  payments = payments.map((payment) => {
+    if (!targetIds.has(payment.id)) return payment;
+
+    return {
+      ...payment,
+      mcyExportStatus: "連携済",
+      updatedAt: new Date().toISOString()
+    };
+  });
+
+  savePayments();
+  renderPayments();
+  renderMcyPreview();
+
+  alert("表示分を連携済に更新しました。");
 }
 
 eventForm.addEventListener("submit", (event) => {
@@ -846,6 +1078,22 @@ exportPaymentJsonButton.addEventListener("click", () => {
   exportJson("super-hello-payments", payments);
 });
 
+mcyExportTarget.addEventListener("change", () => {
+  renderMcyPreview();
+});
+
+exportMcyCsvButton.addEventListener("click", () => {
+  exportMcyCsv();
+});
+
+exportMcyJsonButton.addEventListener("click", () => {
+  exportMcyJson();
+});
+
+markMcyExportedButton.addEventListener("click", () => {
+  markDisplayedMcyRowsAsExported();
+});
+
 clearAllButton.addEventListener("click", () => {
   if (events.length === 0) return;
 
@@ -883,12 +1131,15 @@ clearPaymentButton.addEventListener("click", () => {
   savePayments();
   resetPaymentForm();
   renderPayments();
+  renderMcyPreview();
 });
 
 loadEvents();
 loadParticipations();
 loadPayments();
+loadMcyExportLogs();
 
 renderEvents();
 renderParticipations();
 renderPayments();
+renderMcyPreview();

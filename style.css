@@ -341,3 +341,7 @@ input[readonly] {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.mcy-table {
+  min-width: 1500px;
+}
