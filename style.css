@@ -79,6 +79,10 @@ body {
   padding: 10px;
 }
 
+.import-area {
+  padding: 10px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(160px, 1fr));
@@ -344,4 +348,15 @@ input[readonly] {
 
 .mcy-table {
   min-width: 1500px;
+}
+
+.import-preview-table {
+  min-width: 700px;
+}
+
+.import-preview-table th:first-child,
+.import-preview-table td:first-child {
+  width: 180px;
+  background: #e5e5e5;
+  font-weight: bold;
 }

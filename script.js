@@ -11,6 +11,7 @@ let mcyExportLogs = [];
 let editingId = null;
 let editingParticipationId = null;
 let editingPaymentId = null;
+let importPreviewData = null;
 
 const eventForm = document.getElementById("eventForm");
 const eventTableBody = document.getElementById("eventTableBody");
@@ -20,6 +21,11 @@ const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 const exportJsonButton = document.getElementById("exportJsonButton");
 const clearAllButton = document.getElementById("clearAllButton");
+const importSourceText = document.getElementById("importSourceText");
+const analyzeImportButton = document.getElementById("analyzeImportButton");
+const clearImportButton = document.getElementById("clearImportButton");
+const applyImportButton = document.getElementById("applyImportButton");
+const importPreviewTableBody = document.getElementById("importPreviewTableBody");
 
 const participationForm = document.getElementById("participationForm");
 const participationTableBody = document.getElementById("participationTableBody");
@@ -159,6 +165,277 @@ function resetForm() {
   eventForm.reset();
   document.getElementById("status").value = "候補";
   document.querySelector("#eventForm .primary-button").textContent = "登録";
+}
+
+function parseImportedEventText(text) {
+  const normalized = normalizeImportedText(text);
+
+  return {
+    eventTitle: extractEventTitle(normalized),
+    eventDate: extractDateByLabels(normalized, ["開催日", "公演日", "日程", "日時"]),
+    startTime: extractStartTime(normalized),
+    venue: extractVenue(normalized),
+    prefecture: extractPrefecture(normalized),
+    groupName: extractGroupName(normalized),
+    eventType: extractEventType(normalized),
+    ticketPrice: extractTicketPrice(normalized),
+    applicationDeadline: extractDateByLabels(normalized, ["申込締切", "申込み締切", "受付締切", "応募締切", "締切"]),
+    lotteryDate: extractDateByLabels(normalized, ["当落発表", "抽選結果", "当選発表", "落選発表"]),
+    paymentDeadline: extractDateByLabels(normalized, ["支払期限", "入金締切", "入金期限", "支払い期限"]),
+    sourceUrl: extractSourceUrl(normalized),
+    memo: buildImportMemo(normalized)
+  };
+}
+
+function normalizeImportedText(text) {
+  return String(text || "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
+function extractEventTitle(text) {
+  const lines = getMeaningfulLines(text);
+  const labeled = findLabeledValue(lines, ["イベント名", "公演名", "タイトル"]);
+  if (labeled) return cleanupValue(labeled);
+
+  const quoted = text.match(/[「『](.{4,80})[」』]/);
+  if (quoted) return cleanupValue(quoted[1]);
+
+  const candidates = lines.filter((line) => {
+    if (/https?:\/\//i.test(line)) return false;
+    if (/(開催日|公演日|日程|日時|会場|料金|価格|申込|受付|締切|当落|支払|入金|開場|開演|START)/i.test(line)) return false;
+    return /(コンサート|ツアー|ライブ|イベント|リリース|発売記念|バースデー|BD|舞台|公演|Hello! Project|ハロプロ)/i.test(line);
+  });
+
+  return cleanupValue(candidates.sort((a, b) => b.length - a.length)[0] || "");
+}
+
+function extractDateByLabels(text, labels) {
+  const lines = getMeaningfulLines(text);
+
+  for (const label of labels) {
+    const line = lines.find((item) => item.includes(label));
+    const parsed = line ? parseDateText(line) : "";
+    if (parsed) return parsed;
+  }
+
+  if (labels.includes("開催日") || labels.includes("公演日")) {
+    return parseDateText(text);
+  }
+
+  return "";
+}
+
+function parseDateText(text) {
+  const full = text.match(/(20\d{2})\s*[年\/.-]\s*(\d{1,2})\s*[月\/.-]\s*(\d{1,2})\s*日?/);
+  if (full) return toDateInputValue(full[1], full[2], full[3]);
+
+  const slash = text.match(/(20\d{2})(\d{2})(\d{2})/);
+  if (slash) return toDateInputValue(slash[1], slash[2], slash[3]);
+
+  const noYear = text.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (noYear) {
+    const currentYear = new Date().getFullYear();
+    return toDateInputValue(currentYear, noYear[1], noYear[2]);
+  }
+
+  return "";
+}
+
+function toDateInputValue(year, month, day) {
+  const yyyy = String(year).padStart(4, "0");
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function extractStartTime(text) {
+  const labeled = text.match(/(?:開演|START|開始)[^\d]*(\d{1,2})\s*[:：時]\s*(\d{2})?/i);
+  if (labeled) return toTimeInputValue(labeled[1], labeled[2]);
+
+  const anyTime = text.match(/(\d{1,2})\s*[:：]\s*(\d{2})/);
+  if (anyTime) return toTimeInputValue(anyTime[1], anyTime[2]);
+
+  return "";
+}
+
+function toTimeInputValue(hour, minute) {
+  return `${String(hour).padStart(2, "0")}:${String(minute || "00").padStart(2, "0")}`;
+}
+
+function extractVenue(text) {
+  const lines = getMeaningfulLines(text);
+  const labeled = findLabeledValue(lines, ["会場", "場所"]);
+  if (labeled) return cleanupValue(labeled);
+
+  const venueLine = lines.find((line) => /(ホール|会館|劇場|武道館|アリーナ|Zepp|Club|STUDIO|シアター)/i.test(line));
+  return cleanupValue(venueLine || "");
+}
+
+function extractPrefecture(text) {
+  const lines = getMeaningfulLines(text);
+  const labeled = findLabeledValue(lines, ["都道府県", "エリア"]);
+  if (labeled) return cleanupPrefecture(labeled);
+
+  const prefectures = [
+    "北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉",
+    "東京", "神奈川", "新潟", "富山", "石川", "福井", "山梨", "長野", "岐阜", "静岡", "愛知", "三重",
+    "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山", "鳥取", "島根", "岡山", "広島", "山口", "徳島",
+    "香川", "愛媛", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"
+  ];
+
+  return prefectures.find((prefecture) => text.includes(prefecture)) || "";
+}
+
+function cleanupPrefecture(value) {
+  return cleanupValue(value).replace(/[都道府県]$/, "");
+}
+
+function extractGroupName(text) {
+  const groups = [
+    "モーニング娘。'26",
+    "モーニング娘。",
+    "アンジュルム",
+    "Juice=Juice",
+    "つばきファクトリー",
+    "BEYOOOOONDS",
+    "OCHA NORMA",
+    "ロージークロニクル",
+    "ハロプロ研修生"
+  ];
+
+  const matched = groups.find((group) => text.includes(group));
+  if (!matched) {
+    if (/Hello! Project|ハロー！プロジェクト|ハロプロ/.test(text)) return "複数グループ";
+    return "";
+  }
+
+  if (matched === "モーニング娘。") return "モーニング娘。'26";
+  return matched;
+}
+
+function extractEventType(text) {
+  if (/リリース|発売記念|個別|チェキ|サイン|お話し会|握手/.test(text)) return "RELEASE EVENT";
+  if (/バースデー|BD/.test(text)) return "BD EVENT";
+  if (/FC|ファンクラブ/.test(text)) return "FC EVENT";
+  if (/舞台|ミュージカル|演劇/.test(text)) return "STAGE";
+  if (/配信|stream|Streaming/i.test(text)) return "STREAM";
+  if (/コンサート|ツアー|ライブ|公演/.test(text)) return "CONCERT";
+  if (/イベント/.test(text)) return "OTHER";
+  return "";
+}
+
+function extractTicketPrice(text) {
+  const labeled = text.match(/(?:チケット料金|チケット価格|チケット代|料金|価格|入場料)[^\d]*(\d{1,3}(?:,\d{3})+|\d{4,5})\s*円?/);
+  if (labeled) return `${labeled[1].replaceAll(",", "")}円`;
+
+  const yenText = text.match(/(\d{1,3}(?:,\d{3})+|\d{4,5})\s*円/);
+  if (yenText) return `${yenText[1].replaceAll(",", "")}円`;
+
+  return "";
+}
+
+function extractSourceUrl(text) {
+  const match = text.match(/https?:\/\/[^\s"'<>]+/i);
+  return match ? match[0] : "";
+}
+
+function buildImportMemo(text) {
+  const memoLines = [];
+  const price = extractTicketPrice(text);
+  if (price) memoLines.push(`チケット価格: ${price}`);
+  memoLines.push("取り込み補助で解析。登録前に原文確認。");
+  return memoLines.join("\n");
+}
+
+function getMeaningfulLines(text) {
+  return text.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+function findLabeledValue(lines, labels) {
+  for (const label of labels) {
+    const line = lines.find((item) => item.includes(label));
+    if (!line) continue;
+
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = line.match(new RegExp(`${escapedLabel}\\s*[：:】\\]]?\\s*(.+)$`));
+    if (match) return match[1];
+  }
+
+  return "";
+}
+
+function cleanupValue(value) {
+  return String(value || "")
+    .replace(/^[：:】\]\s]+/, "")
+    .replace(/\s*(詳細|備考|注意事項).*$/g, "")
+    .trim();
+}
+
+function renderImportPreview(data) {
+  const rows = [
+    ["イベント名", data.eventTitle],
+    ["開催日", data.eventDate],
+    ["開演時間", data.startTime],
+    ["会場", data.venue],
+    ["都道府県", data.prefecture],
+    ["グループ", data.groupName],
+    ["種別", data.eventType],
+    ["チケット価格", data.ticketPrice],
+    ["申込締切", data.applicationDeadline],
+    ["当落発表日", data.lotteryDate],
+    ["支払期限", data.paymentDeadline],
+    ["情報源URL", data.sourceUrl],
+    ["メモ", data.memo]
+  ];
+
+  importPreviewTableBody.innerHTML = rows.map(([label, value]) => `
+    <tr>
+      <td>${escapeHtml(label)}</td>
+      <td>${escapeHtml(value || "")}</td>
+    </tr>
+  `).join("");
+}
+
+function clearImportPreview() {
+  importPreviewData = null;
+  importPreviewTableBody.innerHTML = `<tr><td colspan="2">解析結果はありません。</td></tr>`;
+  applyImportButton.disabled = true;
+}
+
+function applyImportPreviewToEventForm() {
+  if (!importPreviewData) {
+    alert("先に解析してください。");
+    return;
+  }
+
+  const fields = {
+    eventDate: "eventDate",
+    startTime: "startTime",
+    groupName: "groupName",
+    eventType: "eventType",
+    eventTitle: "eventTitle",
+    venue: "venue",
+    prefecture: "prefecture",
+    applicationDeadline: "applicationDeadline",
+    lotteryDate: "lotteryDate",
+    paymentDeadline: "paymentDeadline",
+    sourceUrl: "sourceUrl"
+  };
+
+  Object.entries(fields).forEach(([key, elementId]) => {
+    if (!importPreviewData[key]) return;
+    document.getElementById(elementId).value = importPreviewData[key];
+  });
+
+  if (importPreviewData.memo) {
+    const memo = document.getElementById("memo");
+    memo.value = [memo.value.trim(), importPreviewData.memo].filter(Boolean).join("\n");
+  }
+
+  eventForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function getParticipationFormData() {
@@ -922,6 +1199,28 @@ function markDisplayedMcyRowsAsExported() {
 
   alert("表示分を連携済に更新しました。");
 }
+
+analyzeImportButton.addEventListener("click", () => {
+  const text = importSourceText.value.trim();
+
+  if (!text) {
+    alert("取り込み元テキストを貼り付けてください。");
+    return;
+  }
+
+  importPreviewData = parseImportedEventText(text);
+  renderImportPreview(importPreviewData);
+  applyImportButton.disabled = false;
+});
+
+clearImportButton.addEventListener("click", () => {
+  importSourceText.value = "";
+  clearImportPreview();
+});
+
+applyImportButton.addEventListener("click", () => {
+  applyImportPreviewToEventForm();
+});
 
 eventForm.addEventListener("submit", (event) => {
   event.preventDefault();

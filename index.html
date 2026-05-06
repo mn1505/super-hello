@@ -9,7 +9,7 @@
 <body>
   <header class="app-header">
     <div class="app-title">SUPER HELLO</div>
-    <div class="app-subtitle">ハロプロ イベント管理システム v0.3</div>
+    <div class="app-subtitle">ハロプロ イベント管理システム v0.5</div>
   </header>
 
   <nav class="top-menu">
@@ -125,6 +125,42 @@
           <button type="button" id="resetButton">入力クリア</button>
         </div>
       </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">イベント情報 取り込み補助</div>
+
+      <div class="import-area">
+        <label>
+          取り込み元テキスト
+          <textarea id="importSourceText" rows="8" placeholder="公式サイト、FCページ、プレイガイド等からコピーしたイベント情報を貼り付け"></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button type="button" id="analyzeImportButton" class="primary-button">解析</button>
+          <button type="button" id="clearImportButton">取り込み欄クリア</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table import-preview-table">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>抽出結果</th>
+            </tr>
+          </thead>
+          <tbody id="importPreviewTableBody">
+            <tr>
+              <td colspan="2">解析結果はありません。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="applyImportButton" class="primary-button" disabled>イベント登録フォームへ反映</button>
+      </div>
     </section>
 
     <section class="panel">
